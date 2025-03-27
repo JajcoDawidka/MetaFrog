@@ -1,0 +1,450 @@
+/* ================== */
+/* 🌎 GLOBAL STYLES  */
+/* ================== */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    max-width: 100%;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    background-color: #0d0d0d;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    display: flex;
+    flex-direction: column; /* Układ w kolumnie */
+    min-height: 100vh; /* Cała wysokość okna */
+    scroll-behavior: smooth;
+}
+
+
+/* Style dla wszystkich nagłówków h1 w całym body */
+body h1 {
+    color: #8a2be2; /* Kolor tekstu */
+    font-size: 36px; /* Rozmiar czcionki */
+    font-weight: bold; /* Waga czcionki */
+    margin-bottom: 20px; /* Odstęp poniżej nagłówka */
+    text-align: center; /* Wyrównanie do środka */
+}
+
+/* ================== */
+/* 🔝 HEADER / NAV   */
+/* ================== */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0; /* Resetujemy padding w nagłówku */
+    background-color: #111;
+    width: 100%;
+    height: 60px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    margin-bottom: 20; /* Upewniamy się, że nie ma marginesu poniżej nagłówka */
+}
+
+header h1 {
+    font-size: 30px;
+    color: #8a2be2;
+    margin: 0;
+    position: absolute;
+    left: 50px;
+}
+
+nav {
+    display: flex;
+    justify-content: center;
+    flex-grow: 1;
+}
+
+#zakladki {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+#zakladki ul {
+    list-style: none;
+    display: flex;
+    gap: 20px;
+    padding: 0;
+    margin: 0;
+}
+
+nav a {
+    color: #8a2be2;
+    text-decoration: none;
+    font-weight: bold;
+    text-align: center;
+    font-size: 18px;  /* Większy tekst */
+    padding: 15px 30px; /* Większy obszar klikalny */
+    border-radius: 8px; /* Zaokrąglenie */
+}
+
+/* Efekt hover dla zakładek */
+nav a:hover {
+    color: #111;
+    background-color: #8a2be2;
+}
+
+.main-content {
+    flex-grow: 1; /* Pozwól, aby treść wypełniła przestrzeń */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100%; /* Wypełnia całą wysokość */
+}
+
+/* Ukrywanie sekcji domyślnie */
+.section {
+    display: none;
+    text-align: center;
+    margin-top: 50px;
+    padding: 50px;
+}
+
+/* Sekcja aktywna */
+.section.active {
+    display: block;
+}
+
+#home .roadmap-heading {
+    margin-top: 0px;
+}
+
+/* ================== */
+/* ℹ️ ABOUT BLOCKS   */
+/* ================== */
+.about-blocks {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 75px;
+    margin-top: 0px;
+}
+
+.block {
+    background-color: #111;
+    border: 2px solid #8a2be2;
+    border-radius: 10px;
+    padding: 20px;
+    width: 250px;
+    text-align: center;
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+#about .roadmap-heading {
+    margin-top: 0px; /* Może to również wpłynąć na odległość od góry */
+    margin-bottom: 30px; /* Odległość między nagłówkiem a blokami */
+}
+
+/* Efekt glow */
+.block:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(138, 43, 226, 0.8);
+}
+
+/* ================== */
+/* 🚀 ROADMAP BLOCKS  */
+/* ================== */
+.roadmap {
+    color: #8a2be2;
+    font-size: 36px;
+    margin-bottom: 0px;
+    margin-top: 0px;
+}
+
+.roadmapa {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto;
+    gap: 50px;
+    width: 100%;
+    max-width: 1000px;
+    margin: 30px auto;
+    position: relative;
+}
+
+.Q {
+    background-color: #111;
+    border: 2px solid #8a2be2; /* 🎯 NOWE OBRAMOWANIE */
+    border-radius: 10px;
+    padding: 30px;
+    width: 300px;
+    text-align: center;
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Pozycjonowanie roadmapy */
+#Q2 { justify-self: left; align-self: center; margin-top: 0px; }
+#Q3 { justify-self: right; align-self: center; margin-top: 60px; }
+#Q4 { justify-self: left; align-self: center; margin-top: 120px; }
+#Q1 { justify-self: right; align-self: center; margin-top: 180px; }
+
+.Q:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(138, 43, 226, 0.7);
+}
+
+/* Stylizacja nagłówka z równym odstępem na górze i dole */
+.roadmap-heading {
+    color: #8a2be2;
+    font-size: 36px;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 70px; /* Ustalamy odstęp od góry, aby dodać przestrzeń między headerem a tym napisem */
+    margin-bottom: 40px; /* Odstęp od dołu */
+    padding: 0; /* Upewniamy się, że nie ma dodatkowego paddingu */
+}
+
+/* ================== */
+/* 💰 TOKENOMICS    */
+/* ================== */
+.tokenomics {
+    margin-top: 80px;
+    padding: 50px;
+    text-align: center;
+    background-color: #111;
+    border-radius: 15px;
+    border: 2px solid #8a2be2;
+    box-shadow: 0 4px 10px rgba(138, 43, 226, 0.5);
+}
+
+.tokenomics h1 {
+    color: #8a2be2;
+    font-size: 48px;
+    margin-bottom: 30px;
+}
+
+/* ================== */
+/* Ustawienie gridu z centralnym Total Supply */
+/* ================== */
+.tokenomics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 3 kolumny */
+    gap: 30px;
+    justify-items: center; /* Centruje każdy element w swojej komórce */
+    margin-top: 30px;
+    position: relative;
+}
+
+/* Centralny blok (Total Supply) */
+.total-supply {
+    grid-column: 2; /* Ustawia go w środkowej kolumnie */
+    grid-row: 2; /* Ustawia go w środkowym wierszu */
+    background-color: #111;
+    padding: 30px;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 320px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 2px solid #8a2be2;
+}
+
+/* Pozostałe bloki */
+.token-box {
+    background-color: #111;
+    padding: 30px;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 280px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 2px solid #8a2be2;
+}
+
+/* Wyróżnienie na hover */
+.token-box:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 0 25px rgba(138, 43, 226, 0.7);
+}
+
+/* Token-box h2 i p */
+.token-box h2 {
+    color: #8a2be2;
+    font-size: 26px;
+    margin-bottom: 15px;
+}
+
+.token-box p {
+    color: #fff;
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+/* Stylizacja centralnego bloku */
+.total-supply h2 {
+    color: #8a2be2;
+    font-size: 30px;
+    margin-bottom: 15px;
+}
+
+.total-supply p {
+    color: #fff;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+/* ================== */
+/* Dodatkowe responsywności */
+@media (max-width: 768px) {
+    .tokenomics-grid {
+        grid-template-columns: 1fr 1fr; /* Dwie kolumny na mniejszych ekranach */
+    }
+
+    .total-supply {
+        grid-column: 1 / span 2; /* Total Supply zajmuje dwie kolumny */
+    }
+}
+
+@media (max-width: 480px) {
+    .tokenomics-grid {
+        grid-template-columns: 1fr; /* Jedna kolumna na bardzo małych ekranach */
+    }
+
+    .total-supply {
+        grid-column: 1; /* Total Supply zajmuje całą szerokość */
+    }
+}
+
+/* ================== */
+/* 🛒 BUY $MFROG    */
+/* ================== */
+.buy-mfrog {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 50px;
+}
+
+.buy-mfrog-block {
+    background-color: #111;
+    padding: 20px;
+    border-radius: 15px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(138, 43, 226, 0.5);
+    max-width: 500px; /* Ograniczanie szerokości dla lepszego wyglądu */
+    width: 100%;
+    border: 2px solid #8a2be2;
+    transition: all 0.3s ease; /* Płynna animacja */
+}
+
+/* Efekt glow przy najechaniu */
+.buy-mfrog-block:hover {
+    box-shadow: 0 0 10px 4px #8a2be2; /* Poświata na zielono */
+    transform: scale(1.05); /* Lekka animacja powiększenia */
+}
+
+/* Nagłówek w bloku */
+.buy-mfrog-block h1 {
+    color: #8a2be2;
+    font-size: 30px;
+    margin-bottom: 15px; /* Odstęp od treści poniżej */
+    margin-top: 15px;
+}
+
+/* Treść w bloku */
+.buy-mfrog-block h3 {
+    color: #fff;
+    font-size: 18px;
+    line-height: 1;
+    margin-bottom: 0px; /* Odstęp między akapitami */
+}
+
+/* Treść w bloku */
+.buy-mfrog-block h2 {
+    color: #fff;
+    font-size: 24px;
+    line-height: 1;
+    margin-bottom: 0px; /* Odstęp między akapitami */
+}
+
+/* Przycisk kupna */
+.buy-button {
+    display: inline-block;
+    background-color: #8a2be2;
+    color: #fff;
+    text-decoration: none;
+    padding: 12px 25px;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 15px;
+    margin-bottom: 15px;
+    transition: background 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+}
+
+/* Glow na przycisku po najechaniu */
+.buy-button:hover {
+    background-color: #8a2be2;
+    box-shadow: 0 0 15px rgba(138, 43, 226, 0.9);
+}
+
+/* ================== */
+/* 👇 STOPKA        */
+/* ================== */
+footer {
+    height: auto; /* Dostosowanie wysokości do zawartości */
+    background-color: #111;
+    color: #fff;
+    display: flex;
+    flex-direction: column; /* Ustawienie elementów w kolumnie */
+    align-items: center;
+    justify-content: center;
+    padding: 20px 0;
+    width: 100%;
+    position: relative;
+    margin-top: auto; /* Upewnia się, że stopka znajduje się na dole */
+    text-align: center;
+}
+
+/* Linki w stopce */
+footer .social-links a {
+    color: #8a2be2;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 10px 20px;  /* Dodany padding dla większego obszaru klikalnego */
+    border-radius: 8px;  /* Zaokrąglone rogi */
+    transition: background-color 0.3s ease, color 0.3s ease; /* Dodany płynny efekt */
+}
+
+footer .social-links a {
+    color: #8a2be2;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: bold;
+    transition: color 0.3s ease;
+}
+
+/* Efekt hover dla linków w stopce */
+footer .social-links a:hover {
+    background-color: #8a2be2; /* Zmieniamy tło na fioletowe */
+    color: #111;  /* Zmieniamy kolor tekstu na ciemny */
+    text-decoration: none;  /* Usuwamy podkreślenie tekstu */
+}
+
+footer p {
+    margin: 0;
+    font-size: 14px;
+    color: #8a2be2;
+}

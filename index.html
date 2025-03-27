@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MetaFrog</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Nagłówek strony -->
+    <header>
+        <h1>MetaFrog</h1>
+        <nav>
+            <div id="zakladki">
+                <ul>
+                    <li><a href="javascript:void(0)" onclick="showHome()">Home</a></li>
+                    <li><a href="javascript:void(0)" onclick="showGames()">Games</a></li>
+                    <li><a href="javascript:void(0)" onclick="showStaking()">Staking</a></li>
+                    <li><a href="javascript:void(0)" onclick="showAbout()">About</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Główna sekcja strony -->
+    <div class="main-content">
+        <!-- Sekcja Home -->
+        <section id="home" class="section active">
+            <h1 class="roadmap-heading">Dive into Meta Frog - Your Future in the Metaverse</h1>
+            <div class="buy-mfrog">
+                <div class="buy-mfrog-block">
+                    <h1>How to buy $MFROG?</h1>
+                    <h2>Get your $MFROG tokens quickly and securely on Raydium.</h2>
+                        <h2>MetaFrog $MFROG</h2>
+                            <h3>Contract Address:</h3>
+                            <h3> EGYCrdkH3exixiGC6HpNv2nZL87a9wtVWNU3U8Jz4pFV</h3>
+                    <a href="https://raydium.io/swap/?inputMint=sol&outputMint=EGYCrdkH3exixiGC6HpNv2nZL87a9wtVWNU3U8Jz4pFV&referrer=ENPAtjzBu7cooehmoP8eYYucZtTybCrP4WDcQ9L8Kfwp" target="_blank" class="buy-button">BUY ON RAYDIUM</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sekcja About -->
+        <section id="about" class="section">
+            <h1 class="roadmap-heading">About MetaFrog</h1>
+
+            <!-- 4 Bloczek z informacjami -->
+            <div class="about-blocks">
+                <div class="block">
+                    <h2>Revolutionizing Metaverse</h2>
+                    <p>MetaFrog aims to be at the forefront of the metaverse, offering a seamless experience for all users through innovative technology.</p>
+                </div>
+                <div class="block">
+                    <h2>Strong Community</h2>
+                    <p>Our community is the core of MetaFrog. We prioritize building a strong, engaged, and vibrant ecosystem for everyone involved.</p>
+                </div>
+                <div class="block">
+                    <h2>Innovative Gameplay</h2>
+                    <p>With immersive games and engaging content, we aim to provide the best gaming experience that aligns with the growing metaverse trend.</p>
+                </div>
+                <div class="block">
+                    <h2>Decentralized Finance</h2>
+                    <p>MetaFrog is not just a game or a token; it's part of the decentralized finance ecosystem, empowering users with complete control over their assets.</p>
+                </div>
+            </div>
+
+            <!-- Roadmap -->
+            <div class="roadmap">
+                <h1>🚀 META FROG ROADMAP 🐸</h1>
+            </div>
+
+            <section class="roadmapa">
+                <!-- Q2 -->
+                <div id="Q2" class="Q">
+                    <h2>Q2 2025</h2>
+                    <ul>
+                        <li>First airdrop for early supporters.</li>
+                        <li>Community building on X, Telegram, Discord, and TikTok.</li>
+                        <li>Development of the first META FROG game.</li>
+                        <li>Airdrop for players of the first META FROG game.</li>
+                    </ul>
+                </div>
+                <!-- Q3 -->
+                <div id="Q3" class="Q">
+                    <h2>Q3 2025</h2>
+                    <ul>
+                        <li>META FROG staking launch.</li>
+                        <li>Expansion to larger CEX listings.</li>
+                        <li>Marketing campaign, viral content, and trends.</li>
+                        <li>META FROG related NFTs (limited collection).</li>
+                        <li>Gamification, missions, and engagement rewards.</li>
+                    </ul>
+                </div>
+                <!-- Q4 -->
+                <div id="Q4" class="Q">
+                    <h2>Q4 2025</h2>
+                    <ul>
+                        <li>Major strategic partnerships.</li>
+                        <li>Listing on TOP 5 CEXs.</li>
+                        <li>META FROG DAO, community-driven decision-making.</li>
+                        <li>Partnerships in the metaverse and gaming industry, integrating META FROG with other ecosystems.</li>
+                    </ul>
+                </div>
+                <!-- Q1 -->
+                <div id="Q1" class="Q">
+                    <h2>Q1 2026</h2>
+                    <ul>
+                        <li>META FROG Metaverse Hub, a virtual space for the community.</li>
+                        <li>Integration with other metaverse platforms and games.</li>
+                        <li>Development of new use cases for the META FROG token.</li>
+                    </ul>
+                </div>
+                <!-- Strzałki -->
+                <div class="arrows">
+                    <div class="arrow arrow-Q2-Q3"></div>
+                    <div class="arrow arrow-Q3-Q4"></div>
+                    <div class="arrow arrow-Q4-Q1"></div>
+                </div>
+            </section>
+
+            <!-- Sekcja Tokenomics -->
+            <div id="tokenomics" class="tokenomics">
+                <h1>Tokenomics</h1>
+                <!-- Kontener wykresu kołowego -->
+                <div class="pie-chart-container">
+                    <canvas id="tokenomicsChart" class="pie-chart"></canvas>
+                </div>
+
+                <!-- Reszta informacji o tokenomice -->
+                <div class="tokenomics-grid">
+                    <div class="token-box">
+                        <h2>Total Supply</h2>
+                        <p>1,000,000,000 $MFROG</p>
+                    </div>
+                    <div class="token-box">
+                        <h2>Liquidity Pool</h2>
+                        <p>68.3%</p>
+                    </div>
+                    <div class="token-box">
+                        <h2>Future Airdrops</h2>
+                        <p>10%</p>
+                    </div>
+                    <div class="token-box">
+                        <h2>Marketing & CEX</h2>
+                        <p>10%</p>
+                    </div>
+                    <div class="token-box">
+                        <h2>Dev Team</h2>
+                        <p>7%</p>
+                    </div>
+                    <div class="token-box">
+                        <h2>Reserve</h2>
+                        <p>4.7%</p>
+                    </div>
+                </div>
+                <h1>🔥 Burn Mechanism Coming Soon! 🔥</h1>
+            </div>
+        </section>
+
+        <!-- Sekcja Games -->
+        <section id="games" class="section">
+            <h1>Games - Coming Soon!</h1>
+            <p>Stay tuned for upcoming games in the MetaFrog universe.</p>
+        </section>
+
+        <!-- Sekcja Staking -->
+        <section id="staking" class="section">
+            <h1>Staking - Coming Soon!</h1>
+            <p>Get ready for staking opportunities with MetaFrog.</p>
+        </section>
+
+         <!-- Stopka -->
+<footer>
+    <div class="social-links">
+        <a href="https://dexscreener.com/solana/EGYCrdkH3exixiGC6HpNv2nZL87a9wtVWNU3U8Jz4pFV" target="_blank" rel="noopener noreferrer">DEXSCREENER</a>
+        <a href="https://x.com/MFROG_coin" target="_blank" rel="noopener noreferrer">TWITTER (X)</a>
+        <a href="https://t.me/mfrog_coin" target="_blank" rel="noopener noreferrer">TELEGRAM</a>
+        <a href="https://www.tiktok.com/@froggychilltoken" target="_blank" rel="noopener noreferrer">TIKTOK</a>
+        <a href="ComingSoon!" target="_blank" rel="noopener noreferrer">DISCORD</a>
+    </div>
+</footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
