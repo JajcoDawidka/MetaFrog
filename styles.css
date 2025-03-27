@@ -292,9 +292,15 @@ nav a:hover {
     margin-bottom: 20px; /* Odstęp od treści poniżej */
 }
 
+@keyframes pulse {
+    0% { box-shadow: 0 0 10px rgba(106, 90, 205, 0.5); }
+    50% { box-shadow: 0 0 20px rgba(106, 90, 205, 0.8); }
+    100% { box-shadow: 0 0 10px rgba(106, 90, 205, 0.5); }
+}
+
 .buy-button {
     display: inline-block;
-    background: linear-gradient(45deg, #4a90e2, #6a5acd); /* Niebieski + Fiolet */
+    background: linear-gradient(45deg, #4a90e2, #6a5acd);
     color: #f8f8f8;
     text-decoration: none;
     font-size: 16px;
@@ -303,13 +309,14 @@ nav a:hover {
     border-radius: 8px;
     text-align: center;
     box-shadow: 0 4px 10px rgba(106, 90, 205, 0.5);
-    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.3s ease;
+    transition: transform 0.2s ease, box-shadow 0.3s ease-in-out;
+    animation: pulse 2s infinite;  /* 🔥 To dodaje animację */
 }
 
 .buy-button:hover {
-    background: linear-gradient(45deg, #3b7dd8, #5a4bcf); /* Trochę ciemniejszy przy hover */
     transform: scale(1.05);
-    box-shadow: 0 6px 14px rgba(106, 90, 205, 0.7);
+    background: linear-gradient(45deg, #3b7dd8, #5a4bcf);
+    box-shadow: 0 0 15px rgba(106, 90, 205, 0.9);
 }
 
 .buy-button:active {
