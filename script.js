@@ -1,11 +1,6 @@
 /**
- * MetaFrog - Complete Website Functionality
- * Includes:
- * - Section navigation (fixed refresh issue)
- * - Airdrop progress system
- * - Form validation
- * - Task verification
- * - Referral system
+ * MetaFrog - Complete Solution
+ * Fixed all navigation and refresh issues
  */
 
 class MetaFrogApp {
@@ -33,9 +28,7 @@ class MetaFrogApp {
       });
     });
 
-    window.addEventListener('popstate', () => {
-      this.handleInitialSection();
-    });
+    window.addEventListener('popstate', () => this.handleInitialSection());
   }
 
   handleInitialSection() {
@@ -53,9 +46,9 @@ class MetaFrogApp {
     if (!this.isValidPath(section)) return;
 
     if (replace) {
-      history.replaceState(null, null, `/${section === 'home' ? '' : section}`);
+      history.replaceState({ section }, null, `/${section === 'home' ? '' : section}`);
     } else {
-      history.pushState(null, null, `/${section === 'home' ? '' : section}`);
+      history.pushState({ section }, null, `/${section === 'home' ? '' : section}`);
     }
 
     this.showSection(section);
@@ -81,7 +74,8 @@ class MetaFrogApp {
 
   // Helper methods
   getCurrentPath() {
-    return window.location.pathname.replace('/', '') || 'home';
+    const path = window.location.pathname.replace(/^\//, '').split('/')[0] || 'home';
+    return this.validSections.includes(path) ? path : 'home';
   }
 
   isValidPath(path) {
@@ -89,18 +83,18 @@ class MetaFrogApp {
   }
 
   getSectionFromHref(href) {
-    return href === '/' ? 'home' : href.replace(/^\//, '');
+    return href === '/' ? 'home' : href.replace(/^\//, '').split('?')[0];
   }
 
   updateNavStyle(activeSection) {
     document.querySelectorAll('nav a').forEach(link => {
-      link.style.backgroundColor = '';
-      link.style.color = '';
-      
       const linkSection = this.getSectionFromHref(link.getAttribute('href'));
       if (linkSection === activeSection) {
         link.style.backgroundColor = '#8a2be2';
         link.style.color = '#111';
+      } else {
+        link.style.backgroundColor = '';
+        link.style.color = '';
       }
     });
   }
@@ -216,19 +210,6 @@ class MetaFrogApp {
     }
   }
 
-  // =====================
-  // COPY REFERRAL FUNCTION
-  // =====================
-  setupEventListeners() {
-    const referralButton = document.querySelector('.task-link button');
-    if (referralButton) {
-      referralButton.addEventListener('click', (e) => {
-        e.preventDefault();
-        this.copyReferralLink();
-      });
-    }
-  }
-
   copyReferralLink() {
     const referralLink = "https://metafrog.xyz/airdrop?ref=user123";
     const button = document.querySelector('.task-link button');
@@ -263,9 +244,9 @@ class MetaFrogApp {
   }
 }
 
-// Initialize the app when DOM is ready
+// Initialize the app
 document.addEventListener('DOMContentLoaded', () => {
-  const app = new MetaFrogApp();
+  window.app = new MetaFrogApp();
   
   // Global functions for HTML onclick handlers
   window.showHome = () => app.navigateTo('home');
