@@ -1,36 +1,24 @@
 /**
  * MetaFrog - Complete Website Functionality
  * Includes:
- * - Section navigation
+ * - Section navigation (fixed refresh issue)
  * - Airdrop progress system
  * - Form validation
  * - Task verification
  * - Referral system
  */
-// W funkcji init() dodaj:
-handleInitialSection();
-
-function handleInitialSection() {
-  const path = window.location.pathname.replace('/', '') || 'home';
-  const validSections = ['home', 'games', 'airdrop', 'staking', 'about'];
-  
-  if (!validSections.includes(path)) {
-    window.location.href = '/'; // Przekieruj na home jeśli zła ścieżka
-    return;
-  }
-  showSection(path);
-}
 
 class MetaFrogApp {
   constructor() {
+    this.validSections = ['home', 'games', 'airdrop', 'staking', 'about'];
     this.init();
   }
 
   init() {
     this.setupNavigation();
+    this.handleInitialSection();
     this.initAirdrop();
     this.setupEventListeners();
-    this.handleInitialSection();
   }
 
   // ======================
@@ -40,56 +28,81 @@ class MetaFrogApp {
     document.querySelectorAll('nav a').forEach(link => {
       link.addEventListener('click', (e) => {
         e.preventDefault();
-        const section = link.getAttribute('href').replace('/', '') || 'home';
-        this.showSection(section);
-        history.pushState(null, null, `/${section === 'home' ? '' : section}`);
+        const section = this.getSectionFromHref(link.getAttribute('href'));
+        this.navigateTo(section);
       });
     });
 
-    window.addEventListener('popstate', () => this.handleInitialSection());
+    window.addEventListener('popstate', () => {
+      this.handleInitialSection();
+    });
   }
 
   handleInitialSection() {
-    const path = window.location.pathname.replace('/', '') || 'home';
+    const path = this.getCurrentPath();
+    
+    if (!this.isValidPath(path)) {
+      this.navigateTo('home', true);
+      return;
+    }
+
     this.showSection(path);
   }
 
-  showSection(sectionId) {
-    // Hide all sections
-    document.querySelectorAll('.section').forEach(section => {
-      section.classList.remove('active');
+  navigateTo(section, replace = false) {
+    if (!this.isValidPath(section)) return;
+
+    if (replace) {
+      history.replaceState(null, null, `/${section === 'home' ? '' : section}`);
+    } else {
+      history.pushState(null, null, `/${section === 'home' ? '' : section}`);
+    }
+
+    this.showSection(section);
+  }
+
+  showSection(section) {
+    document.querySelectorAll('.section').forEach(sec => {
+      sec.classList.remove('active');
     });
 
-    // Show requested section
-    const section = document.getElementById(sectionId);
-    if (section) {
-      section.classList.add('active');
+    const sectionEl = document.getElementById(section);
+    if (sectionEl) {
+      sectionEl.classList.add('active');
       window.scrollTo(0, 0);
     }
 
-    // Update nav styling
-    this.updateNavStyle(sectionId);
+    this.updateNavStyle(section);
 
-    // Special handling for airdrop section
-    if (sectionId === 'airdrop') {
+    if (section === 'airdrop') {
       this.initAirdrop();
     }
+  }
+
+  // Helper methods
+  getCurrentPath() {
+    return window.location.pathname.replace('/', '') || 'home';
+  }
+
+  isValidPath(path) {
+    return this.validSections.includes(path);
+  }
+
+  getSectionFromHref(href) {
+    return href === '/' ? 'home' : href.replace(/^\//, '');
   }
 
   updateNavStyle(activeSection) {
     document.querySelectorAll('nav a').forEach(link => {
       link.style.backgroundColor = '';
       link.style.color = '';
+      
+      const linkSection = this.getSectionFromHref(link.getAttribute('href'));
+      if (linkSection === activeSection) {
+        link.style.backgroundColor = '#8a2be2';
+        link.style.color = '#111';
+      }
     });
-
-    const activeLink = document.querySelector(
-      `nav a[href="/${activeSection === 'home' ? '' : activeSection}"]`
-    );
-    
-    if (activeLink) {
-      activeLink.style.backgroundColor = '#8a2be2';
-      activeLink.style.color = '#111';
-    }
   }
 
   // ==================
@@ -98,7 +111,6 @@ class MetaFrogApp {
   initAirdrop() {
     this.resetAirdropSteps();
     
-    // Check localStorage for existing submission
     if (localStorage.getItem('airdropFormSubmitted')) {
       this.setStepState(1, 'completed');
       this.setStepState(2, 'active');
@@ -106,13 +118,11 @@ class MetaFrogApp {
       this.setStepState(1, 'active');
     }
 
-    // Initialize form
     const form = document.querySelector('.airdrop-form');
     if (form) {
       form.addEventListener('submit', (e) => this.handleAirdropForm(e));
     }
 
-    // Setup task verification
     this.setupTaskVerification();
   }
 
@@ -131,14 +141,10 @@ class MetaFrogApp {
     const step = document.querySelector(`.step-card:nth-child(${stepNumber})`);
     if (!step) return;
 
-    // Reset classes
     step.classList.remove('completed-step', 'active-step', 'pending-step');
-
-    // Get status element
     const status = step.querySelector('.step-status');
     if (!status) return;
 
-    // Apply new state
     switch(state) {
       case 'active':
         step.classList.add('active-step');
@@ -161,7 +167,6 @@ class MetaFrogApp {
   handleAirdropForm(e) {
     e.preventDefault();
 
-    // Validate required fields
     const wallet = document.getElementById('wallet').value.trim();
     const xUsername = document.getElementById('xUsername').value.trim();
     const telegram = document.getElementById('telegram').value.trim();
@@ -171,7 +176,6 @@ class MetaFrogApp {
       return;
     }
 
-    // Save submission
     localStorage.setItem('airdropFormSubmitted', 'true');
     localStorage.setItem('airdropFormData', JSON.stringify({
       wallet,
@@ -180,7 +184,6 @@ class MetaFrogApp {
       tiktok: document.getElementById('tiktok').value.trim()
     }));
     
-    // Update steps
     this.setStepState(1, 'completed');
     this.setStepState(2, 'active');
     
@@ -188,12 +191,10 @@ class MetaFrogApp {
   }
 
   setupTaskVerification() {
-    // Check existing verifications
     if (localStorage.getItem('dexScreenerVisited')) {
       this.markTaskVerified('dexscreener');
     }
 
-    // Setup click handlers
     document.querySelectorAll('.task-link').forEach(link => {
       link.addEventListener('click', (e) => {
         if (link.classList.contains('dexscreener-link')) {
@@ -267,10 +268,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const app = new MetaFrogApp();
   
   // Global functions for HTML onclick handlers
-  window.showHome = () => app.showSection('home');
-  window.showGames = () => app.showSection('games');
-  window.showAirdrop = () => app.showSection('airdrop');
-  window.showStaking = () => app.showSection('staking');
-  window.showAbout = () => app.showSection('about');
+  window.showHome = () => app.navigateTo('home');
+  window.showGames = () => app.navigateTo('games');
+  window.showAirdrop = () => app.navigateTo('airdrop');
+  window.showStaking = () => app.navigateTo('staking');
+  window.showAbout = () => app.navigateTo('about');
   window.copyReferralLink = () => app.copyReferralLink();
 });
