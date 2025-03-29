@@ -7,6 +7,19 @@
  * - Task verification
  * - Referral system
  */
+// W funkcji init() dodaj:
+handleInitialSection();
+
+function handleInitialSection() {
+  const path = window.location.pathname.replace('/', '') || 'home';
+  const validSections = ['home', 'games', 'airdrop', 'staking', 'about'];
+  
+  if (!validSections.includes(path)) {
+    window.location.href = '/'; // Przekieruj na home jeśli zła ścieżka
+    return;
+  }
+  showSection(path);
+}
 
 class MetaFrogApp {
   constructor() {
