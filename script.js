@@ -50,36 +50,14 @@ const MetaFrogApp = {
       }
 
       // Formularz airdrop
-      const airdropForm = document.querySelector('.airdrop-form');
-      if (airdropForm) {
-        airdropForm.addEventListener('submit', (e) => this.handleAirdropForm(e));
+      if (e.target.closest('.airdrop-form')) {
+        e.preventDefault();
+        this.handleAirdropForm(e);
       }
     });
 
     // Obsługa historii przeglądarki
     window.addEventListener('popstate', () => this.handleInitialRoute());
-  },
-
-  // Aktualizacja kroków airdrop
-  advanceToStep(stepNumber) {
-    document.querySelectorAll('.step-card').forEach((card, index) => {
-      const stepStatus = card.querySelector('.step-status');
-      
-      // Usunięcie istniejących klas
-      card.classList.remove('completed-step', 'active-step', 'pending-step');
-
-      // Zaktualizowanie klasy i napisu na podstawie numeru kroku
-      if (index + 1 < stepNumber) {
-        card.classList.add('completed-step'); // Krok zakończony
-        stepStatus.innerHTML = 'Completed'; // Zmiana napisu na "Completed"
-      } else if (index + 1 === stepNumber) {
-        card.classList.add('active-step'); // Krok aktywny
-        stepStatus.innerHTML = 'Active'; // Zmiana napisu na "Active"
-      } else {
-        card.classList.add('pending-step'); // Krok oczekujący
-        stepStatus.innerHTML = 'Pending'; // Zmiana napisu na "Pending"
-      }
-    });
   },
 
   // Obsługa formularza airdrop
@@ -126,22 +104,73 @@ const MetaFrogApp = {
     try {
       // Zapisz do Firestore
       await this.db.collection('airdropParticipants').doc(wallet).set(submissionData);
+      
+      // Zmiana statusu kroków
+      this.updateStepStatus(1, 'completed');
+      this.updateStepStatus(2, 'active');
 
-      // Zaktualizowanie UI po wysłaniu formularza
-      this.advanceToStep(2); // Zmiana na krok 2 (krok 1 już zmienia się na completed)
       this.showAlert('Rejestracja udana! Możesz teraz wykonać zadania.', 'success');
-      this.trackConversion(); // Śledzenie konwersji (Google Analytics)
-
+      
     } catch (error) {
       console.error("Błąd zapisu do Firestore:", error);
       this.showAlert('Wystąpił błąd podczas przesyłania formularza. Proszę spróbować ponownie.', 'error');
     }
   },
 
-  // Sprawdzenie, czy adres Solana jest poprawny
+  // Funkcja aktualizująca status kroków
+  updateStepStatus(stepNumber, status) {
+    const stepElement = document.querySelector(`#step-${stepNumber}`);
+    
+    if (!stepElement) return;
+    
+    const stepTitle = stepElement.querySelector('.step-title');
+    const stepDescription = stepElement.querySelector('.step-description');
+    
+    if (status === 'active') {
+      stepElement.classList.add('active');
+      stepElement.classList.remove('completed');
+      stepTitle.innerText = `Step ${stepNumber} - Active`;
+      stepDescription.innerText = `In Progress...`;
+    } else if (status === 'completed') {
+      stepElement.classList.remove('active');
+      stepElement.classList.add('completed');
+      stepTitle.innerText = `Step ${stepNumber} - Completed`;
+      stepDescription.innerText = `Completed`;
+    }
+  },
+
+  // Sprawdzenie statusu weryfikacji
+  async checkVerificationStatus() {
+    const wallet = document.getElementById('wallet')?.value.trim();
+    if (!wallet) return;
+
+    try {
+      const doc = await this.db.collection('airdropParticipants').doc(wallet).get();
+      if (doc.exists) {
+        const data = doc.data();
+        
+        // Aktualizuj UI dla każdego zweryfikowanego zadania
+        for (const task in data.verificationStatus) {
+          if (data.verificationStatus[task]) {
+            this.updateVerificationUI(task);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Błąd sprawdzania statusu:", error);
+    }
+  },
+
+  // Walidacja adresu Solana
   isValidSolanaAddress(address) {
     return address.length >= 32 && address.length <= 44 && 
            /^[A-HJ-NP-Za-km-z1-9]*$/.test(address);
+  },
+
+  // Pobranie kodu polecającego z URL
+  getReferralCodeFromURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('ref');
   },
 
   // Wyświetlanie powiadomień
@@ -169,11 +198,6 @@ const MetaFrogApp = {
     if (section) {
       section.classList.add('active');
       window.location.hash = sectionId;
-      
-      // Inicjalizacja sekcji airdrop
-      if (sectionId === 'airdrop') {
-        this.initAirdropSection();
-      }
     }
   },
 
@@ -181,42 +205,6 @@ const MetaFrogApp = {
   initAirdropSection() {
     this.checkVerificationStatus();
     this.checkAirdropProgress();
-  },
-
-  // Pobranie nazwy sekcji z href
-  getSectionFromHref(href) {
-    return href.replace(/^#\/?/, '') || 'home';
-  },
-
-  // Animacja liczników
-  initCounters() {
-    this.animateCounter('participants-counter', 12500);
-    this.animateCounter('tokens-counter', 2500000);
-  },
-
-  animateCounter(elementId, target) {
-    const element = document.getElementById(elementId);
-    if (!element) return;
-    
-    let current = 0;
-    const increment = target / 100;
-    const timer = setInterval(() => {
-      current += increment;
-      element.textContent = Math.floor(current).toLocaleString();
-      if (current >= target) {
-        element.textContent = target.toLocaleString();
-        clearInterval(timer);
-      }
-    }, 20);
-  },
-
-  // Śledzenie konwersji
-  trackConversion() {
-    if (typeof gtag !== 'undefined') {
-      gtag('event', 'conversion', {
-        'send_to': 'AW-123456789/AbCdEfGhIjKlMnOpQrStUv'
-      });
-    }
   },
 
   // Sprawdzenie postępu airdrop (możesz rozbudować)
@@ -233,10 +221,4 @@ document.addEventListener('DOMContentLoaded', () => {
 // Globalna obsługa błędów
 window.addEventListener('error', (event) => {
   console.error('Globalny błąd:', event.error);
-  if (typeof gtag !== 'undefined') {
-    gtag('event', 'exception', {
-      description: event.error.message,
-      fatal: true
-    });
-  }
 });
