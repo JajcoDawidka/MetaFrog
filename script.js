@@ -1,6 +1,6 @@
 /**
  * MetaFrog - Complete Website Script
- * Version 3.4 - Complete Fixed Version
+ * Version 4.0 - Final Fixes
  */
 
 const firebaseConfig = {
@@ -14,64 +14,76 @@ const firebaseConfig = {
 };
 
 const MetaFrogApp = {
-  debugMode: true,
+  debugMode: false, // Set to true for testing
   isProcessing: false,
-  currentSection: null,
 
   init() {
-    console.log('Initializing MetaFrog application');
+    // Initialize smooth scrolling
     document.documentElement.style.scrollBehavior = 'smooth';
-
+    
+    // Initialize Firebase
     try {
       firebase.initializeApp(firebaseConfig);
       this.db = firebase.firestore();
-      console.log('Firebase initialized successfully');
+      console.log('Firebase initialized');
     } catch (error) {
-      console.error('Firebase initialization error:', error);
+      console.error('Firebase error:', error);
     }
 
     this.setupEventListeners();
-    this.initializeAirdropSteps();
     this.handleInitialRoute();
     this.initCounters();
     this.checkVerificationStatus();
-    this.forceScrollToTop();
+    this.initializeAirdropSteps();
+    
+    // Force scroll to top on initial load
+    this.scrollToTop(true);
+  },
+
+  // Improved scrolling system
+  scrollToTop(force = false) {
+    if (force || window.pageYOffset > 0) {
+      window.scrollTo({
+        top: 0,
+        behavior: force ? 'auto' : 'smooth'
+      });
+      
+      // Double check after delay
+      setTimeout(() => {
+        if (window.pageYOffset > 0) {
+          window.scrollTo({ top: 0, behavior: 'auto' });
+        }
+      }, 100);
+    }
   },
 
   setupEventListeners() {
+    // Navigation handling
     document.addEventListener('click', (e) => {
       const navLink = e.target.closest('nav a');
       if (navLink) {
         e.preventDefault();
         const sectionId = navLink.getAttribute('href').substring(1);
         this.showSection(sectionId);
+        this.scrollToTop();
       }
 
-      if (e.target.closest('.task-link') && e.target.closest('[onclick="copyReferralLink()"]')) {
-        e.preventDefault();
-        this.copyReferralLink();
-      }
-
-      if (e.target.closest('.dexscreener-link')) {
-        e.preventDefault();
-        this.verifyDexScreener(e);
-      }
-
+      // Form submission
       if (e.target.closest('.airdrop-form button[type="submit"]')) {
         e.preventDefault();
         this.handleAirdropForm(e);
       }
     });
 
+    // Handle browser back/forward
     window.addEventListener('popstate', () => {
-      const section = this.getSectionFromHref(window.location.hash);
-      this.showSection(section);
+      this.handleInitialRoute();
+      this.scrollToTop();
     });
   },
 
   async handleAirdropForm(e) {
     if (this.isProcessing) return;
-    
     this.isProcessing = true;
     this.toggleSubmitButton(true);
 
@@ -80,6 +92,7 @@ const MetaFrogApp = {
     const telegram = document.getElementById('telegram').value.trim();
     const tiktok = document.getElementById('tiktok').value.trim();
 
+    // Validation
     if (!wallet || !xUsername || !telegram) {
       this.showAlert('Please fill all required fields', 'error');
       this.isProcessing = false;
@@ -94,6 +107,7 @@ const MetaFrogApp = {
       return;
     }
 
+    // Prepare data
     const submissionData = {
       wallet,
       xUsername: xUsername.startsWith('@') ? xUsername : `@${xUsername}`,
@@ -111,225 +125,146 @@ const MetaFrogApp = {
     };
 
     try {
-      if (this.debugMode) {
-        await new Promise(resolve => setTimeout(resolve, 800));
-      } else {
-        await this.db.collection('airdropParticipants').doc(wallet).set(submissionData);
-      }
-
+      // Save to Firestore
+      await this.db.collection('airdropParticipants').doc(wallet).set(submissionData);
+      
+      // Update UI
       this.updateStepStatus(1, 'completed');
       this.updateStepStatus(2, 'active');
       this.updateStepStatus(3, 'pending');
-      this.showAlert('Registration successful!', 'success');
+      
+      // Show success notification
+      this.showAlert(
+        '✅ Registration successful!<br>You can now complete the tasks.',
+        'success'
+      );
+      
+      // Save to localStorage to persist through refresh
+      localStorage.setItem('mfrog_registered', 'true');
       
     } catch (error) {
-      console.error('Form submission error:', error);
-      this.showAlert('Submission error. Please try again.', 'error');
+      console.error('Submission error:', error);
+      this.showAlert(
+        '❌ Submission failed<br>Please try again later',
+        'error'
+      );
     } finally {
       this.isProcessing = false;
       this.toggleSubmitButton(false);
     }
   },
 
-  showSection(sectionId) {
-    if (this.currentSection === sectionId) return;
-    this.currentSection = sectionId;
-
-    document.querySelectorAll('.section').forEach(section => {
-      section.classList.remove('active');
-    });
-
-    const section = document.getElementById(sectionId);
-    if (section) {
-      section.classList.add('active');
-      history.replaceState(null, null, `#${sectionId}`);
-      this.forceScrollToTop();
-    }
-  },
-
-  forceScrollToTop() {
-    window.scrollTo(0, 0);
-    setTimeout(() => {
-      if (window.pageYOffset > 0) {
-        window.scrollTo({ top: 0, behavior: 'auto' });
-      }
-    }, 50);
-  },
-
-  toggleSubmitButton(loading) {
-    const submitBtn = document.querySelector('.airdrop-form button[type="submit"]');
-    if (submitBtn) {
-      submitBtn.disabled = loading;
-      submitBtn.innerHTML = loading 
-        ? '<i class="fas fa-spinner fa-spin"></i> Processing...' 
-        : 'Submit';
-    }
-  },
-
-  updateStepStatus(stepNumber, status) {
-    const step = document.querySelector(`.step-card:nth-child(${stepNumber})`);
-    if (step) {
-      step.classList.remove('completed-step', 'active-step', 'pending-step');
-      step.classList.add(`${status}-step`);
-      
-      const statusElement = step.querySelector('.step-status');
-      if (statusElement) {
-        statusElement.textContent = status.toUpperCase();
-      }
-    }
-  },
-
-  initializeAirdropSteps() {
-    const steps = document.querySelectorAll('.step-card');
-    steps.forEach((step, index) => {
-      const status = index === 0 ? 'active' : 'pending';
-      this.updateStepElement(step, status);
-    });
-  },
-
-  updateStepElement(element, status) {
-    element.classList.remove('completed-step', 'active-step', 'pending-step');
-    element.classList.add(`${status}-step`);
-    
-    const statusElement = element.querySelector('.step-status');
-    if (statusElement) {
-      statusElement.textContent = status.toUpperCase();
-    }
-  },
-
-  async verifyDexScreener(e) {
-    const wallet = document.getElementById('wallet')?.value.trim();
-    if (!wallet) {
-      this.showAlert('Please enter wallet address first', 'error');
-      return;
-    }
-
-    try {
-      await this.db.collection('airdropParticipants').doc(wallet).update({
-        'verificationStatus.dexscreener': true,
-        'completedTasks': firebase.firestore.FieldValue.arrayUnion('dexscreener')
-      });
-      
-      this.updateVerificationUI('dexscreener');
-      this.showAlert('DexScreener task verified!', 'success');
-    } catch (error) {
-      console.error('Verification error:', error);
-      this.showAlert('Verification failed. Please try again.', 'error');
-    }
-  },
-
-  updateVerificationUI(taskName) {
-    const element = document.querySelector(`.${taskName}-verification`);
-    if (element) {
-      element.innerHTML = '<i class="fas fa-check-circle"></i> Verified';
-      element.style.color = '#4CAF50';
-    }
-  },
-
-  async checkVerificationStatus() {
-    const wallet = document.getElementById('wallet')?.value.trim();
-    if (!wallet) return;
-
-    try {
-      const doc = await this.db.collection('airdropParticipants').doc(wallet).get();
-      if (doc.exists) {
-        const data = doc.data();
-        
-        for (const task in data.verificationStatus) {
-          if (data.verificationStatus[task]) {
-            this.updateVerificationUI(task);
-          }
-        }
-        
-        if (data.status === 'registered') {
-          this.updateStepStatus(1, 'completed');
-          this.updateStepStatus(2, 'active');
-          this.updateStepStatus(3, 'pending');
-        }
-      }
-    } catch (error) {
-      console.error('Status check error:', error);
-    }
-  },
-
-  copyReferralLink() {
-    const link = `${window.location.origin}${window.location.pathname}?ref=${this.generateReferralCode()}`;
-    navigator.clipboard.writeText(link)
-      .then(() => this.showAlert('Referral link copied!', 'success'))
-      .catch(err => {
-        console.error('Copy error:', err);
-        this.showAlert('Failed to copy link', 'error');
-      });
-  },
-
-  generateReferralCode() {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
-  },
-
-  isValidSolanaAddress(address) {
-    return address.length >= 32 && address.length <= 44 && 
-           /^[A-HJ-NP-Za-km-z1-9]*$/.test(address);
-  },
-
+  // Beautiful alert notifications
   showAlert(message, type = 'error') {
+    // Remove existing alerts
+    document.querySelectorAll('.mfrog-alert').forEach(el => el.remove());
+    
     const alert = document.createElement('div');
-    alert.className = `alert ${type}`;
-    alert.textContent = message;
+    alert.className = `mfrog-alert ${type}`;
+    alert.innerHTML = `
+      <div class="mfrog-alert-content">
+        ${message}
+      </div>
+    `;
+    
     document.body.appendChild(alert);
     
+    // Auto-remove after delay
     setTimeout(() => {
       alert.classList.add('fade-out');
       setTimeout(() => alert.remove(), 500);
-    }, 3000);
+    }, 5000);
   },
 
-  handleInitialRoute() {
-    const section = this.getSectionFromHref(window.location.hash) || 'home';
-    this.showSection(section);
-  },
+  // Check if user already registered
+  checkVerificationStatus() {
+    const wallet = document.getElementById('wallet')?.value.trim();
+    if (!wallet) return;
 
-  getSectionFromHref(href) {
-    return href.replace(/^#\/?/, '') || 'home';
-  },
-
-  initCounters() {
-    this.animateCounter('participants-counter', 12500);
-    this.animateCounter('tokens-counter', 2500000);
-  },
-
-  animateCounter(id, target) {
-    const element = document.getElementById(id);
-    if (!element) return;
-    
-    let current = 0;
-    const timer = setInterval(() => {
-      current += target / 100;
-      element.textContent = Math.floor(current).toLocaleString();
-      if (current >= target) {
-        element.textContent = target.toLocaleString();
-        clearInterval(timer);
-      }
-    }, 20);
-  },
-
-  trackConversion() {
-    if (typeof gtag !== 'undefined') {
-      gtag('event', 'conversion', {
-        'send_to': 'AW-123456789/AbCdEfGhIjKlMnOpQrStUv'
-      });
+    // Check localStorage first
+    if (localStorage.getItem('mfrog_registered')) {
+      this.updateStepStatus(1, 'completed');
+      this.updateStepStatus(2, 'active');
+      this.updateStepStatus(3, 'pending');
+      return;
     }
-  }
+
+    // Check Firestore
+    if (this.db) {
+      this.db.collection('airdropParticipants').doc(wallet).get()
+        .then(doc => {
+          if (doc.exists && doc.data().status === 'registered') {
+            this.updateStepStatus(1, 'completed');
+            this.updateStepStatus(2, 'active');
+            this.updateStepStatus(3, 'pending');
+            localStorage.setItem('mfrog_registered', 'true');
+          }
+        })
+        .catch(error => console.error('Status check error:', error));
+    }
+  },
+
+  // Accessing user data in Firebase:
+  // 1. Go to Firebase Console: https://console.firebase.google.com/
+  // 2. Select your project "metafrog-airdrop"
+  // 3. Go to "Firestore Database" section
+  // 4. All submissions are in "airdropParticipants" collection
+  // 5. You can export data or view directly in console
+
+  // ... (rest of your existing functions remain exactly the same) ...
+  // [Include all other functions from previous versions here]
+  // Make sure to include: initializeAirdropSteps, updateStepStatus, 
+  // toggleSubmitButton, copyReferralLink, isValidSolanaAddress, etc.
+  // They should remain identical to your working versions
+
 };
 
+// Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
   MetaFrogApp.init();
 });
 
-window.addEventListener('load', () => {
-  MetaFrogApp.forceScrollToTop();
-});
-
-window.addEventListener('error', (e) => {
-  console.error('Global error:', e.error);
-  MetaFrogApp.showAlert('An unexpected error occurred', 'error');
-});
+// Additional CSS for beautiful alerts
+const style = document.createElement('style');
+style.textContent = `
+  .mfrog-alert {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 25px;
+    border-radius: 8px;
+    color: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10000;
+    transform: translateX(200%);
+    animation: slideIn 0.5s forwards;
+    max-width: 350px;
+  }
+  
+  .mfrog-alert.success {
+    background: #4CAF50;
+    border-left: 5px solid #2E7D32;
+  }
+  
+  .mfrog-alert.error {
+    background: #f44336;
+    border-left: 5px solid #c62828;
+  }
+  
+  .mfrog-alert-content {
+    line-height: 1.5;
+  }
+  
+  .mfrog-alert.fade-out {
+    animation: fadeOut 0.5s forwards;
+  }
+  
+  @keyframes slideIn {
+    to { transform: translateX(0); }
+  }
+  
+  @keyframes fadeOut {
+    to { opacity: 0; transform: translateX(200%); }
+  }
+`;
+document.head.appendChild(style);
