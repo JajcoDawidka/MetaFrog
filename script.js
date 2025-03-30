@@ -20,6 +20,12 @@ const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 const auth = getAuth(app);
 
+// Sprawdź poprawność ścieżki (zastępuje 404.html)
+const validPaths = ['/', '/home', '/games', '/airdrop', '/staking', '/about'];
+if (!validPaths.includes(window.location.pathname)) {
+  window.history.replaceState({}, '', '/');
+}
+
 class MetaFrogApp {
   constructor() {
     this.validSections = ['home', 'games', 'airdrop', 'staking', 'about'];
@@ -30,10 +36,9 @@ class MetaFrogApp {
   async initFirebaseAuth() {
     try {
       await signInAnonymously(auth);
-      console.log("Zalogowano anonimowo do Firebase");
+      console.log("Połączono z Firebase");
     } catch (error) {
-      console.error("Błąd logowania do Firebase:", error);
-      // Nawigacja działa nawet bez połączenia z Firebase
+      console.error("Błąd połączenia z Firebase:", error);
     }
   }
 
@@ -42,7 +47,6 @@ class MetaFrogApp {
     this.handleInitialSection();
     this.setupEventListeners();
     
-    // Inicjalizacja airdrop tylko jeśli jest na stronie
     if (window.location.pathname.includes('airdrop')) {
       this.initAirdrop();
     }
@@ -68,7 +72,11 @@ class MetaFrogApp {
 
   navigateTo(section) {
     const cleanSection = this.getCleanPath(section);
-    if (!this.isValidPath(cleanSection)) return;
+    if (!this.isValidPath(cleanSection)) {
+      window.history.replaceState({}, '', '/');
+      this.showSection('home');
+      return;
+    }
     
     this.showSection(cleanSection);
     window.history.pushState({}, '', `/${cleanSection === 'home' ? '' : cleanSection}`);
@@ -116,32 +124,23 @@ class MetaFrogApp {
   }
 
   // ======================
-  // FIREBASE INTEGRATION (v9)
+  // FIREBASE INTEGRATION
   // ======================
   async saveAirdropData(wallet, xUsername, telegram, tiktok) {
     try {
-      // Sprawdź czy jest połączenie z Firebase
-      if (!auth.currentUser) {
-        throw new Error("Brak połączenia z bazą danych");
-      }
-
+      if (!auth.currentUser) throw new Error("Brak połączenia z bazą");
+      
       await push(ref(database, 'airdrops'), {
         wallet,
         xUsername,
         telegram,
         tiktok: tiktok || "",
         date: new Date().toISOString(),
-        verified: false,
-        tasks: {
-          twitter: false,
-          telegram: false,
-          tiktok: false
-        }
+        verified: false
       });
       return true;
     } catch (error) {
       console.error("Błąd zapisu:", error);
-      // Fallback do localStorage jeśli Firebase nie działa
       localStorage.setItem('airdropFormData', JSON.stringify({
         wallet, xUsername, telegram, tiktok
       }));
@@ -166,8 +165,6 @@ class MetaFrogApp {
     if (form) {
       form.addEventListener('submit', (e) => this.handleAirdropForm(e));
     }
-
-    this.setupTaskVerification();
   }
 
   resetAirdropSteps() {
@@ -217,7 +214,7 @@ class MetaFrogApp {
     const tiktok = document.getElementById('tiktok').value.trim();
 
     if (!wallet || !xUsername || !telegram) {
-      alert('Proszę wypełnić wymagane pola!');
+      alert('Wypełnij wymagane pola!');
       return;
     }
 
@@ -227,72 +224,29 @@ class MetaFrogApp {
       localStorage.setItem('airdropFormSubmitted', 'true');
       this.setStepState(1, 'completed');
       this.setStepState(2, 'active');
-      alert('Dziękujemy! Twoje zgłoszenie zostało zapisane.');
+      alert('Zgłoszenie zapisane!');
     } else {
-      alert('Dane zapisane lokalnie. Połącz się z internetem, aby wysłać do bazy.');
-    }
-  }
-
-  setupTaskVerification() {
-    if (localStorage.getItem('dexScreenerVisited')) {
-      this.markTaskVerified('dexscreener');
-    }
-
-    document.querySelectorAll('.task-link').forEach(link => {
-      link.addEventListener('click', (e) => {
-        if (link.classList.contains('dexscreener-link')) {
-          localStorage.setItem('dexScreenerVisited', 'true');
-          this.markTaskVerified('dexscreener');
-        }
-      });
-    });
-  }
-
-  markTaskVerified(taskType) {
-    const taskElement = document.querySelector(`.${taskType}-link`).closest('.task-card');
-    if (taskElement) {
-      const status = taskElement.querySelector('.verification-status');
-      if (status) {
-        status.textContent = "✓ Zweryfikowano";
-        status.style.color = "#4CAF50";
-      }
+      alert('Dane zapisane lokalnie. Połącz się z internetem.');
     }
   }
 
   copyReferralLink() {
     const referralLink = "https://metafrog.xyz/airdrop?ref=user123";
-    const button = document.querySelector('.task-link button');
-    
-    if (!button) return;
-
     navigator.clipboard.writeText(referralLink)
-      .then(() => {
-        const originalHTML = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-check"></i> Skopiowano!';
-        
-        setTimeout(() => {
-          button.innerHTML = originalHTML;
-        }, 2000);
-      })
-      .catch(err => {
-        console.error('Błąd kopiowania:', err);
+      .then(() => alert("Skopiowano link!"))
+      .catch(() => {
         const textarea = document.createElement('textarea');
         textarea.value = referralLink;
         document.body.appendChild(textarea);
         textarea.select();
         document.execCommand('copy');
         document.body.removeChild(textarea);
-        
-        const originalHTML = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-check"></i> Skopiowano!';
-        setTimeout(() => {
-          button.innerHTML = originalHTML;
-        }, 2000);
+        alert("Skopiowano link!");
       });
   }
 }
 
-// Initialize the app
+// Initialize
 document.addEventListener('DOMContentLoaded', () => {
   window.app = new MetaFrogApp();
   
@@ -300,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.app.handleInitialSection();
   });
 
-  // Global functions for HTML onclick handlers
+  // Global functions
   window.showHome = () => window.app.navigateTo('home');
   window.showGames = () => window.app.navigateTo('games');
   window.showAirdrop = () => window.app.navigateTo('airdrop');
@@ -309,74 +263,31 @@ document.addEventListener('DOMContentLoaded', () => {
   window.copyReferralLink = () => window.app.copyReferralLink();
 });
 
-// ADMIN PANEL FUNCTIONS
+// Admin Panel
 if (window.location.pathname.includes('admin.html')) {
-  function loadAirdrops() {
-    onValue(ref(database, 'airdrops'), (snapshot) => {
-      const data = snapshot.val();
-      let html = "";
-      
-      if (data) {
-        for (let key in data) {
-          const entry = data[key];
-          html += `
-            <tr>
-              <td>${entry.wallet}</td>
-              <td>${entry.xUsername}</td>
-              <td>${entry.telegram}</td>
-              <td>${entry.tiktok || "-"}</td>
-              <td>${new Date(entry.date).toLocaleString()}</td>
-              <td>
-                <button onclick="verifyEntry('${key}')" class="verify-btn">
-                  ${entry.verified ? '✓ Zweryfikowano' : 'Zweryfikuj'}
-                </button>
-              </td>
-            </tr>
-          `;
-        }
-      } else {
-        html = "<tr><td colspan='6'>Brak zgłoszeń</td></tr>";
-      }
-      
-      document.getElementById("airdropList").innerHTML = html;
-    }, (error) => {
-      console.error("Błąd odczytu danych:", error);
-      document.getElementById("airdropList").innerHTML = `
-        <tr><td colspan='6'>Błąd połączenia z bazą danych</td></tr>
-      `;
-    });
-  }
-
-  window.verifyEntry = (key) => {
-    if (confirm("Czy na pewno chcesz zweryfikować to zgłoszenie?")) {
-      update(ref(database, `airdrops/${key}`), { verified: true })
-        .then(() => alert("Zgłoszenie zweryfikowane!"))
-        .catch(error => alert("Błąd: " + error.message));
-    }
-  };
-
-  document.getElementById("searchInput")?.addEventListener("input", (e) => {
-    const searchTerm = e.target.value.toLowerCase();
-    const rows = document.querySelectorAll("#airdropTable tbody tr");
-
-    rows.forEach(row => {
-      const wallet = row.cells[0].textContent.toLowerCase();
-      const twitter = row.cells[1].textContent.toLowerCase();
-      if (wallet.includes(searchTerm) || twitter.includes(searchTerm)) {
-        row.style.display = "";
-      } else {
-        row.style.display = "none";
-      }
-    });
+  onValue(ref(database, 'airdrops'), (snapshot) => {
+    const data = snapshot.val();
+    let html = data ? Object.entries(data).map(([key, entry]) => `
+      <tr>
+        <td>${entry.wallet}</td>
+        <td>${entry.xUsername}</td>
+        <td>${entry.telegram}</td>
+        <td>${entry.tiktok || "-"}</td>
+        <td>${new Date(entry.date).toLocaleString()}</td>
+        <td>
+          <button onclick="verifyEntry('${key}')">
+            ${entry.verified ? '✓' : 'Zweryfikuj'}
+          </button>
+        </td>
+      </tr>
+    `).join('') : '<tr><td colspan="6">Brak danych</td></tr>';
+    
+    document.getElementById("airdropList").innerHTML = html;
   });
 
-  // Init admin panel
-  signInAnonymously(auth)
-    .then(() => loadAirdrops())
-    .catch(error => {
-      console.error("Błąd logowania admina:", error);
-      document.getElementById("airdropList").innerHTML = `
-        <tr><td colspan='6'>Błąd autoryzacji</td></tr>
-      `;
-    });
+  window.verifyEntry = (key) => {
+    update(ref(database, `airdrops/${key}`), { verified: true })
+      .then(() => alert("Zweryfikowano!"))
+      .catch(error => alert("Błąd: " + error.message));
+  };
 }
