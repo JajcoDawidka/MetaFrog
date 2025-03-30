@@ -1,6 +1,6 @@
 /**
  * MetaFrog - Complete Website Script
- * Version 4.3 - Fixed Permissions & Enhanced Security
+ * Version 4.5 - Full Robust Version
  */
 
 const firebaseConfig = {
@@ -21,27 +21,78 @@ const MetaFrogApp = {
   auth: null,
   realtimeDb: null,
 
-  async init() {
+  async initializeFirebase() {
     try {
+      if (typeof firebase === 'undefined') {
+        await Promise.all([
+          this.loadScript('https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js'),
+          this.loadScript('https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js'),
+          this.loadScript('https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js'),
+          this.loadScript('https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js')
+        ]);
+      }
+
       firebase.initializeApp(firebaseConfig);
       this.db = firebase.firestore();
       this.auth = firebase.auth();
       this.realtimeDb = firebase.database();
-      console.log('Firebase initialized successfully');
 
       await this.auth.signInAnonymously();
+      console.log('Firebase initialized successfully');
+      return true;
+    } catch (error) {
+      console.error('Firebase initialization failed:', error);
+      return false;
+    }
+  },
+
+  async init() {
+    try {
+      const firebaseInitialized = await this.initializeFirebase();
       
-      this.setupEventListeners();
-      this.handleInitialRoute();
-      this.setupFormValidation();
-      this.setupUsernameFormatting();
-      this.checkVerificationStatus();
-      this.initializeAirdropSteps();
+      if (!firebaseInitialized) {
+        this.showAlert('⚠️ Warning: Running in limited mode (database offline)', 'warning');
+      }
+
+      this.setupNavigation();
       this.scrollToTop(true);
+      
+      if (firebaseInitialized) {
+        this.setupFormValidation();
+        this.setupUsernameFormatting();
+        this.checkVerificationStatus();
+        this.initializeAirdropSteps();
+        this.setupFormSubmission();
+      }
 
     } catch (error) {
-      console.error('Initialization error:', error);
-      this.showAlert('⚠️ System initialization error', 'warning');
+      console.error('App initialization failed:', error);
+      this.showEmergencyMode();
+    }
+  },
+
+  // ======================
+  // CORE FUNCTIONALITY
+  // ======================
+  setupNavigation() {
+    document.querySelectorAll('nav a').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const sectionId = e.target.getAttribute('href').substring(1);
+        this.showSection(sectionId);
+        this.scrollToTop();
+      });
+    });
+  },
+
+  showSection(sectionId) {
+    document.querySelectorAll('.section').forEach(section => {
+      section.classList.remove('active');
+    });
+    const section = document.getElementById(sectionId);
+    if (section) {
+      section.classList.add('active');
+      history.pushState(null, null, `#${sectionId}`);
     }
   },
 
@@ -51,25 +102,13 @@ const MetaFrogApp = {
         top: 0,
         behavior: force ? 'auto' : 'smooth'
       });
-      
-      setTimeout(() => {
-        if (window.pageYOffset > 0) {
-          window.scrollTo({ top: 0, behavior: 'auto' });
-        }
-      }, 100);
     }
   },
 
-  setupEventListeners() {
-    document.querySelectorAll('nav a').forEach(link => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const sectionId = e.target.getAttribute('href').substring(1);
-        this.showSection(sectionId);
-        this.scrollToTop();
-      });
-    });
-
+  // ======================
+  // FORM HANDLING
+  // ======================
+  setupFormSubmission() {
     const form = document.querySelector('.airdrop-form');
     if (form) {
       form.addEventListener('submit', (e) => {
@@ -77,66 +116,6 @@ const MetaFrogApp = {
         this.handleAirdropForm(e);
       });
     }
-
-    window.addEventListener('popstate', () => {
-      this.handleInitialRoute();
-    });
-
-    const copyBtn = document.querySelector('.task-link[onclick*="copyReferralLink"]');
-    if (copyBtn) {
-      copyBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        this.copyReferralLink();
-      });
-    }
-  },
-
-  setupFormValidation() {
-    const walletInput = document.getElementById('wallet');
-    if (walletInput) {
-      walletInput.addEventListener('blur', () => {
-        if (walletInput.value && !this.isValidSolanaAddress(walletInput.value)) {
-          walletInput.style.borderColor = 'red';
-          this.showAlert('Invalid Solana wallet address', 'error');
-        } else {
-          walletInput.style.borderColor = '';
-        }
-      });
-    }
-  },
-
-  setupUsernameFormatting() {
-    ['xUsername', 'telegram', 'tiktok'].forEach(id => {
-      const input = document.getElementById(id);
-      if (input) {
-        input.addEventListener('blur', () => {
-          if (input.value && !input.value.startsWith('@')) {
-            input.value = `@${input.value}`;
-          }
-        });
-      }
-    });
-  },
-
-  showSection(sectionId) {
-    document.querySelectorAll('.section').forEach(section => {
-      section.classList.remove('active');
-    });
-
-    const section = document.getElementById(sectionId);
-    if (section) {
-      section.classList.add('active');
-      
-      if (window.location.hash !== `#${sectionId}`) {
-        history.pushState(null, null, `#${sectionId}`);
-      }
-    }
-  },
-
-  handleInitialRoute() {
-    const sectionId = window.location.hash.substring(1) || 'home';
-    this.showSection(sectionId);
-    this.scrollToTop();
   },
 
   async handleAirdropForm(e) {
@@ -181,22 +160,12 @@ const MetaFrogApp = {
       console.error('Submission error:', error);
       let message = error.message;
       if (error.code === 'permission-denied') {
-        message = 'Database permission denied. Please contact support.';
+        message = 'Database permissions issue. Please refresh the page.';
       }
       this.showAlert(`❌ ${message}`, 'error');
     } finally {
       this.isProcessing = false;
       this.toggleSubmitButton(false);
-    }
-  },
-
-  async getIP() {
-    try {
-      const response = await fetch('https://api.ipify.org?format=json');
-      const data = await response.json();
-      return data.ip || 'unknown';
-    } catch {
-      return 'unknown';
     }
   },
 
@@ -208,6 +177,17 @@ const MetaFrogApp = {
         ? '<i class="fas fa-spinner fa-spin"></i> Processing...' 
         : 'Submit';
     }
+  },
+
+  // ======================
+  // AIRDROP STEPS
+  // ======================
+  initializeAirdropSteps() {
+    const steps = document.querySelectorAll('.step-card');
+    steps.forEach((step, index) => {
+      const status = index === 0 ? 'active' : 'pending';
+      this.updateStepElement(step, status);
+    });
   },
 
   updateStepStatus(stepNumber, status) {
@@ -223,14 +203,6 @@ const MetaFrogApp = {
     }
   },
 
-  initializeAirdropSteps() {
-    const steps = document.querySelectorAll('.step-card');
-    steps.forEach((step, index) => {
-      const status = index === 0 ? 'active' : 'pending';
-      this.updateStepElement(step, status);
-    });
-  },
-
   updateStepElement(element, status) {
     element.classList.remove('completed-step', 'active-step', 'pending-step');
     element.classList.add(`${status}-step`);
@@ -241,22 +213,48 @@ const MetaFrogApp = {
     }
   },
 
+  // ======================
+  // UTILITIES
+  // ======================
+  async getIP() {
+    try {
+      const response = await fetch('https://api.ipify.org?format=json');
+      const data = await response.json();
+      return data.ip || 'unknown';
+    } catch {
+      return 'unknown';
+    }
+  },
+
+  isValidSolanaAddress(address) {
+    return address.length >= 32 && address.length <= 44 && 
+           /^[A-HJ-NP-Za-km-z1-9]*$/.test(address);
+  },
+
   showAlert(message, type = 'error') {
-    document.querySelectorAll('.mfrog-alert').forEach(alert => alert.remove());
-    
     const alert = document.createElement('div');
     alert.className = `mfrog-alert ${type}`;
-    alert.innerHTML = `
-      <div class="mfrog-alert-content">
-        ${message}
-      </div>
-    `;
+    alert.innerHTML = `<div class="mfrog-alert-content">${message}</div>`;
     document.body.appendChild(alert);
     
     setTimeout(() => {
       alert.classList.add('fade-out');
       setTimeout(() => alert.remove(), 500);
     }, 5000);
+  },
+
+  copyReferralLink() {
+    const link = `${window.location.origin}${window.location.pathname}?ref=${this.generateReferralCode()}`;
+    navigator.clipboard.writeText(link)
+      .then(() => this.showAlert('✅ Referral link copied!', 'success'))
+      .catch(err => {
+        console.error('Copy error:', err);
+        this.showAlert('❌ Failed to copy link', 'error');
+      });
+  },
+
+  generateReferralCode() {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
   },
 
   checkVerificationStatus() {
@@ -284,40 +282,66 @@ const MetaFrogApp = {
     }
   },
 
-  copyReferralLink() {
-    const link = `${window.location.origin}${window.location.pathname}?ref=${this.generateReferralCode()}`;
-    navigator.clipboard.writeText(link)
-      .then(() => this.showAlert('Referral link copied to clipboard!', 'success'))
-      .catch(err => {
-        console.error('Copy error:', err);
-        this.showAlert('Failed to copy link', 'error');
+  setupFormValidation() {
+    const walletInput = document.getElementById('wallet');
+    if (walletInput) {
+      walletInput.addEventListener('blur', () => {
+        if (walletInput.value && !this.isValidSolanaAddress(walletInput.value)) {
+          walletInput.style.borderColor = 'red';
+          this.showAlert('Invalid Solana wallet address', 'error');
+        } else {
+          walletInput.style.borderColor = '';
+        }
       });
+    }
   },
 
-  generateReferralCode() {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
+  setupUsernameFormatting() {
+    ['xUsername', 'telegram', 'tiktok'].forEach(id => {
+      const input = document.getElementById(id);
+      if (input) {
+        input.addEventListener('blur', () => {
+          if (input.value && !input.value.startsWith('@')) {
+            input.value = `@${input.value}`;
+          }
+        });
+      }
+    });
   },
 
-  isValidSolanaAddress(address) {
-    return address.length >= 32 && address.length <= 44 && 
-           /^[A-HJ-NP-Za-km-z1-9]*$/.test(address);
+  // ======================
+  // FALLBACK SYSTEMS
+  // ======================
+  loadScript(url) {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = url;
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  },
+
+  showEmergencyMode() {
+    document.body.classList.add('firebase-error');
+    this.setupNavigation();
+    this.showAlert('⚠️ System is running in limited mode. Some features may not work.', 'warning');
+    
+    const form = document.querySelector('.airdrop-form');
+    if (form) {
+      form.querySelector('button[type="submit"]').disabled = true;
+      form.innerHTML += '<p class="error-message">Form submission temporarily unavailable</p>';
+    }
   },
 
   async viewSubmissions() {
     try {
-      if (!this.db) {
-        throw new Error('Firebase not initialized');
-      }
-      
+      if (!this.db) throw new Error('Firebase not initialized');
       const snapshot = await this.db.collection('airdropParticipants').get();
       const submissions = [];
-      snapshot.forEach(doc => {
-        submissions.push(doc.data());
-      });
-      
+      snapshot.forEach(doc => submissions.push(doc.data()));
       console.table(submissions);
       return submissions;
-      
     } catch (error) {
       console.error('Error fetching submissions:', error);
       this.showAlert(`❌ ${error.message}`, 'error');
@@ -326,10 +350,15 @@ const MetaFrogApp = {
   }
 };
 
+// Initialize with error handling
 document.addEventListener('DOMContentLoaded', () => {
-  MetaFrogApp.init();
+  MetaFrogApp.init().catch(error => {
+    console.error('Critical initialization error:', error);
+    MetaFrogApp.showEmergencyMode();
+  });
 });
 
+// Add styles
 const style = document.createElement('style');
 style.textContent = `
   .mfrog-alert {
@@ -369,6 +398,17 @@ style.textContent = `
     animation: fadeOut 0.5s forwards;
   }
   
+  .error-message {
+    color: #ff4444;
+    margin-top: 15px;
+    font-weight: bold;
+  }
+  
+  body.firebase-error .section:not(.active) {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  
   @keyframes slideIn {
     to { transform: translateX(0); }
   }
@@ -376,43 +416,24 @@ style.textContent = `
   @keyframes fadeOut {
     to { opacity: 0; transform: translateX(200%); }
   }
-
+  
   .completed-step {
     border-color: #4CAF50 !important;
     background: linear-gradient(135deg, #1a1a1a, #0a2e0a) !important;
   }
-
+  
   .completed-step .step-number {
     background: #4CAF50 !important;
     border-color: #4CAF50 !important;
   }
-
+  
   .completed-step h3 {
     color: #4CAF50 !important;
   }
-
+  
   .completed-step .step-status {
     background: rgba(76, 175, 80, 0.2) !important;
     color: #4CAF50 !important;
-  }
-
-  .step-connector::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 33%;
-    background: linear-gradient(90deg, #8a2be2, #4b0082);
-    transition: width 0.8s ease;
-  }
-
-  .completed-step ~ .step-connector::after {
-    width: 66%;
-  }
-
-  .completed-step.completed-step ~ .step-connector::after {
-    width: 100%;
   }
 `;
 document.head.appendChild(style);
