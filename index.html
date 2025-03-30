@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MetaFrog</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
@@ -230,7 +230,7 @@
                     <div class="form-group">
                         <label for="tiktok">TikTok Username</label>
                         <input type="text" id="tiktok" placeholder="@yourusername">
-                        <span class="required-field">Required</span>
+                        <span class="required-field">Optional</span>
                     </div>
                     
                     <button type="submit" class="submit-btn">
@@ -248,11 +248,11 @@
                     <div class="status-details">
                         <div class="status-item">
                             <span class="status-label">Participants:</span>
-                            <span class="status-value">Growing daily</span>
+                            <span class="status-value" id="participants-counter">0</span>
                         </div>
                         <div class="status-item">
                             <span class="status-label">Tokens Allocation:</span>
-                            <span class="status-value">Significant portion</span>
+                            <span class="status-value" id="tokens-counter">0</span>
                         </div>
                         <div class="status-item">
                             <span class="status-label">Duration:</span>
@@ -283,9 +283,10 @@
                             <h4>Follow us on Twitter</h4>
                             <div class="task-description">Follow our official Twitter account</div>
                             <div class="task-reward">Reward: Generous amount</div>
-                            <a href="https://x.com/MFROG_coin" target="_blank" class="task-link">
+                            <a href="https://x.com/MFROG_coin" target="_blank" class="task-link twitter-link">
                                 <i class="fas fa-external-link-alt"></i> Go to Twitter
                             </a>
+                            <span class="twitter-verification verification-status"></span>
                         </div>
                     </div>
                     
@@ -295,9 +296,10 @@
                             <h4>Join Telegram</h4>
                             <div class="task-description">Join our Telegram community</div>
                             <div class="task-reward">Reward: Generous amount</div>
-                            <a href="https://t.me/mfrog_coin" target="_blank" class="task-link">
+                            <a href="https://t.me/mfrog_coin" target="_blank" class="task-link telegram-link">
                                 <i class="fas fa-external-link-alt"></i> Join Telegram
                             </a>
+                            <span class="telegram-verification verification-status"></span>
                         </div>
                     </div>
                     
@@ -307,9 +309,10 @@
                             <h4>Follow on TikTok</h4>
                             <div class="task-description">Follow our TikTok account</div>
                             <div class="task-reward">Reward: Generous amount</div>
-                            <a href="https://www.tiktok.com/@froggychilltoken" target="_blank" class="task-link">
+                            <a href="https://www.tiktok.com/@froggychilltoken" target="_blank" class="task-link tiktok-link">
                                 <i class="fas fa-external-link-alt"></i> Go to TikTok
                             </a>
+                            <span class="tiktok-verification verification-status"></span>
                         </div>
                     </div>
 
@@ -334,9 +337,10 @@
                             <h4>Retweet Pinned Post</h4>
                             <div class="task-description">Retweet our pinned tweet</div>
                             <div class="task-reward">Bonus reward</div>
-                            <a href="https://x.com/MFROG_coin" target="_blank" class="task-link">
+                            <a href="https://x.com/MFROG_coin" target="_blank" class="task-link retweet-link">
                                 <i class="fas fa-external-link-alt"></i> Retweet Now
                             </a>
+                            <span class="retweet-verification verification-status"></span>
                         </div>
                     </div>
                     
@@ -346,9 +350,10 @@
                             <h4>Refer Friends</h4>
                             <div class="task-description">Invite friends to participate</div>
                             <div class="task-reward">Extra bonus</div>
-                            <button class="task-link" onclick="copyReferralLink()">
+                            <button class="task-link referral-link" id="copy-referral-btn">
                                 <i class="fas fa-copy"></i> Copy Referral Link
                             </button>
+                            <span class="referral-verification verification-status"></span>
                         </div>
                     </div>
                 </div>
@@ -369,6 +374,274 @@
     </footer>
         </div>
     
-        <script src="script.js"></script>
+        <script>
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAR6Ha8baMX5EPsPVayTno0e0QBRqZrmco",
+            authDomain: "metafrog-airdrop.firebaseapp.com",
+            databaseURL: "https://metafrog-airdrop-default-rtdb.firebaseio.com",
+            projectId: "metafrog-airdrop",
+            storageBucket: "metafrog-airdrop.appspot.com",
+            messagingSenderId: "546707737127",
+            appId: "1:546707737127:web:67956ae63ffef3ebeddc02",
+            measurementId: "G-2Z78VYL739"
+        };
+
+        // Initialize Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Function to handle form submission
+        function handleAirdropForm(event) {
+            event.preventDefault();
+            
+            // Get form values
+            const wallet = document.getElementById('wallet').value.trim();
+            const xUsername = document.getElementById('xUsername').value.trim();
+            const telegram = document.getElementById('telegram').value.trim();
+            const tiktok = document.getElementById('tiktok').value.trim();
+
+            // Validate form
+            if (!wallet || !xUsername || !telegram) {
+                showAlert('Please fill all required fields', 'error');
+                return;
+            }
+
+            // Create user data object
+            const userData = {
+                wallet: wallet,
+                xUsername: xUsername.startsWith('@') ? xUsername : `@${xUsername}`,
+                telegram: telegram.startsWith('@') ? telegram : `@${telegram}`,
+                tiktok: tiktok ? (tiktok.startsWith('@') ? tiktok : `@${tiktok}`) : 'N/A',
+                timestamp: firebase.database.ServerValue.TIMESTAMP,
+                status: 'registered',
+                completedTasks: {
+                    registration: true
+                },
+                points: 10,
+                referralCode: generateReferralCode()
+            };
+
+            // Save to Firebase
+            database.ref('airdropParticipants/' + wallet).set(userData)
+                .then(() => {
+                    // Success - update UI
+                    showAlert('Registration successful!', 'success');
+                    
+                    // Change stage to Step 2
+                    updateProgress(2);
+                    
+                    // Lock form fields
+                    document.getElementById('wallet').readOnly = true;
+                    document.getElementById('xUsername').readOnly = true;
+                    document.getElementById('telegram').readOnly = true;
+                    
+                    // Save to local storage
+                    localStorage.setItem('mfrog_user', wallet);
+                    
+                    // Initialize counters
+                    initCounters();
+                })
+                .catch((error) => {
+                    console.error('Error saving data:', error);
+                    showAlert('Error saving your data. Please try again.', 'error');
+                });
+        }
+
+        // Function to update progress steps
+        function updateProgress(currentStep) {
+            const steps = document.querySelectorAll('.step-card');
+            
+            steps.forEach((step, index) => {
+                // Remove all classes first
+                step.classList.remove('completed-step', 'active-step', 'pending-step');
+                
+                if (index < currentStep - 1) {
+                    step.classList.add('completed-step');
+                } else if (index === currentStep - 1) {
+                    step.classList.add('active-step');
+                } else {
+                    step.classList.add('pending-step');
+                }
+            });
+        }
+
+        // Check if user already registered
+        function checkPreviousUser() {
+            const savedUser = localStorage.getItem('mfrog_user');
+            if (savedUser) {
+                // User already registered - update UI
+                updateProgress(2);
+                document.getElementById('wallet').readOnly = true;
+                document.getElementById('xUsername').readOnly = true;
+                document.getElementById('telegram').readOnly = true;
+                
+                // Check completed tasks
+                checkCompletedTasks(savedUser);
+            }
+        }
+
+        // Check completed tasks for user
+        function checkCompletedTasks(wallet) {
+            database.ref('airdropParticipants/' + wallet + '/completedTasks').once('value')
+                .then((snapshot) => {
+                    const tasks = snapshot.val();
+                    if (tasks) {
+                        for (const task in tasks) {
+                            if (tasks[task]) {
+                                markTaskCompleted(task);
+                            }
+                        }
+                    }
+                });
+        }
+
+        // Function to verify task completion
+        function verifyTask(taskName, element) {
+            const wallet = localStorage.getItem('mfrog_user');
+            if (!wallet) {
+                showAlert('Please register first', 'error');
+                return;
+            }
+
+            // Update in Firebase
+            const updates = {};
+            updates[`airdropParticipants/${wallet}/completedTasks/${taskName}`] = true;
+            updates[`airdropParticipants/${wallet}/points`] = firebase.database.ServerValue.increment(10);
+            
+            database.ref().update(updates)
+                .then(() => {
+                    // Mark as verified in UI
+                    markTaskCompleted(taskName);
+                    showAlert(`Task ${taskName} verified!`, 'success');
+                })
+                .catch(error => {
+                    console.error('Error updating task:', error);
+                    showAlert('Error verifying task. Please try again.', 'error');
+                });
+        }
+
+        // Mark task as completed in UI
+        function markTaskCompleted(taskName) {
+            const element = document.querySelector(`.${taskName}-verification`);
+            if (element) {
+                element.innerHTML = '<i class="fas fa-check-circle"></i> Verified';
+                element.style.color = '#4CAF50';
+            }
+        }
+
+        // Generate referral code
+        function generateReferralCode() {
+            return Math.random().toString(36).substring(2, 8).toUpperCase();
+        }
+
+        // Copy referral link
+        function copyReferralLink() {
+            const wallet = localStorage.getItem('mfrog_user');
+            if (!wallet) {
+                showAlert('Please register first', 'error');
+                return;
+            }
+            
+            database.ref('airdropParticipants/' + wallet + '/referralCode').once('value')
+                .then((snapshot) => {
+                    const referralCode = snapshot.val();
+                    const referralLink = `${window.location.origin}?ref=${referralCode}`;
+                    
+                    navigator.clipboard.writeText(referralLink)
+                        .then(() => {
+                            showAlert('Referral link copied!', 'success');
+                            markTaskCompleted('referral');
+                        })
+                        .catch(err => {
+                            console.error('Error copying:', err);
+                            showAlert('Error copying referral link', 'error');
+                        });
+                });
+        }
+
+        // Show alert message
+        function showAlert(message, type) {
+            const alert = document.createElement('div');
+            alert.className = `alert ${type}`;
+            alert.textContent = message;
+            document.body.appendChild(alert);
+            setTimeout(() => alert.remove(), 3000);
+        }
+
+        // Initialize counters animation
+        function initCounters() {
+            animateCounter('participants-counter', 12500);
+            animateCounter('tokens-counter', 2500000);
+        }
+
+        // Animate counter
+        function animateCounter(elementId, target) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            
+            let current = 0;
+            const increment = target / 100;
+            const timer = setInterval(() => {
+                current += increment;
+                element.textContent = Math.floor(current).toLocaleString();
+                if (current >= target) {
+                    element.textContent = target.toLocaleString();
+                    clearInterval(timer);
+                }
+            }, 20);
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for previous registration
+            checkPreviousUser();
+            
+            // Add form submit handler
+            const form = document.querySelector('.airdrop-form');
+            if (form) {
+                form.addEventListener('submit', handleAirdropForm);
+            }
+            
+            // Add task completion handlers
+            document.querySelectorAll('.task-link').forEach(link => {
+                if (link.classList.contains('dexscreener-link')) {
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        verifyTask('dexscreener', this);
+                    });
+                }
+                if (link.classList.contains('twitter-link')) {
+                    link.addEventListener('click', function(e) {
+                        verifyTask('twitter', this);
+                    });
+                }
+                if (link.classList.contains('telegram-link')) {
+                    link.addEventListener('click', function(e) {
+                        verifyTask('telegram', this);
+                    });
+                }
+                if (link.classList.contains('tiktok-link')) {
+                    link.addEventListener('click', function(e) {
+                        verifyTask('tiktok', this);
+                    });
+                }
+                if (link.classList.contains('retweet-link')) {
+                    link.addEventListener('click', function(e) {
+                        verifyTask('retweet', this);
+                    });
+                }
+            });
+            
+            // Add referral button handler
+            document.getElementById('copy-referral-btn')?.addEventListener('click', function(e) {
+                e.preventDefault();
+                copyReferralLink();
+            });
+            
+            // Initialize counters
+            initCounters();
+        });
+        </script>
     </body>
-    </html>
+</html>
