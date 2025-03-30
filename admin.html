@@ -1,1 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Panel - MetaFrog Airdrop</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+</head>
+<body>
+  <h1>Zgłoszenia Airdrop</h1>
+  <div id="airdropList"></div>
 
+  <script>
+    // Firebase config (ten sam co wyżej)
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    // Pobieranie danych
+    database.ref('airdrops/').on('value', (snapshot) => {
+      const data = snapshot.val();
+      let html = "<table border='1'><tr><th>Wallet</th><th>Twitter</th><th>Telegram</th><th>TikTok</th><th>Data</th></tr>";
+
+      for (let key in data) {
+        const entry = data[key];
+        html += `<tr>
+          <td>${entry.wallet}</td>
+          <td>${entry.xUsername}</td>
+          <td>${entry.telegram}</td>
+          <td>${entry.tiktok || "-"}</td>
+          <td>${new Date(entry.date).toLocaleString()}</td>
+        </tr>`;
+      }
+
+      html += "</table>";
+      document.getElementById("airdropList").innerHTML = html;
+    });
+  </script>
+</body>
+</html>
