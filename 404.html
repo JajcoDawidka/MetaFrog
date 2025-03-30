@@ -1,14 +1,18 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Redirecting...</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 Not Found</title>
     <script>
-        const fullPath = window.location.pathname + window.location.search;
-        localStorage.setItem('mfrog_redirect', fullPath);
         window.location.href = '/';
     </script>
 </head>
 <body>
-    <p>Redirecting to homepage...</p>
+    <!-- Optional: You can add a message for users without JavaScript -->
+    <noscript>
+        <h1>404 Not Found</h1>
+        <p>The page you're looking for doesn't exist. <a href="/">Click here</a> to go to the homepage.</p>
+    </noscript>
 </body>
 </html>
