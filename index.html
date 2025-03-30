@@ -7,11 +7,26 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script>
-  if (sessionStorage.redirect) {
-    const redirect = sessionStorage.redirect;
-    delete sessionStorage.redirect;
-    window.location.href = redirect;
-  }
+        <script>
+    // Obsługa przekierowania z 404.html
+    (function() {
+        const redirectPath = localStorage.getItem('mfrog_redirect');
+        if (redirectPath) {
+            localStorage.removeItem('mfrog_redirect');
+            
+            // Poczekaj na załadowanie aplikacji
+            const checkApp = setInterval(() => {
+                if (window.app) {
+                    clearInterval(checkApp);
+                    const section = redirectPath.replace(/^\//, '').split('/')[0] || 'home';
+                    if (['home', 'games', 'airdrop', 'staking', 'about'].includes(section)) {
+                        window.app.navigateTo(section);
+                    }
+                }
+            }, 50);
+        }
+    })();
+</script>
 </script>
 </head>
 <body>
