@@ -4,644 +4,232 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MetaFrog</title>
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
-    <link rel="stylesheet" href="styles.css">
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Podstawowe style */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f8ff;
+            color: #333;
+        }
+        header {
+            background: linear-gradient(135deg, #1e5799 0%,#207cca 100%);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+        nav ul {
+            display: flex;
+            justify-content: center;
+            list-style: none;
+            padding: 0;
+        }
+        nav li {
+            margin: 0 15px;
+        }
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .section {
+            display: none;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .section.active {
+            display: block;
+        }
+        .airdrop-form {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 500px;
+            margin: 2rem auto;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .submit-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            width: 100%;
+        }
+        .submit-btn:hover {
+            background: #45a049;
+        }
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background: #333;
+            color: white;
+        }
+        .social-links a {
+            color: white;
+            margin: 0 10px;
+            text-decoration: none;
+        }
+    </style>
 </head>
 <body>
     <header>
         <h1>MetaFrog</h1>
         <nav>
-            <div id="zakladki">
-                <ul>
-                    <li><a href="#home">Home</a></li>
-                    <li><a href="#games">Games</a></li>
-                    <li><a href="#airdrop">🔥 AIRDROP 🔥</a></li>
-                    <li><a href="#staking">Staking</a></li>
-                    <li><a href="#about">About</a></li>
-                </ul>
-            </div>
+            <ul>
+                <li><a href="#home">Home</a></li>
+                <li><a href="#airdrop">🔥 AIRDROP 🔥</a></li>
+                <li><a href="#about">About</a></li>
+            </ul>
         </nav>
     </header>
 
-    <!-- Główna sekcja strony -->
     <div class="main-content">
-        <!-- Sekcja Home -->
         <section id="home" class="section active">
-            <h1 class="roadmap-heading">Dive into Meta Frog - Your Future in the Metaverse</h1>
-            <div class="buy-mfrog">
-                <div class="buy-mfrog-block">
-                    <h1>How to buy $MFROG?</h1>
-                    <p>Get your $MFROG tokens quickly and securely on Raydium.</p>
-                    <p>MetaFrog $MFROG</p>
-                    <p>Contract Address:</p>
-                    <p>EGYCrdkH3exixiGC6HpNv2nZL87a9wtVWNU3U8Jz4pFV</p>
-                    <a href="https://raydium.io/swap/?inputMint=EGYCrdkH3exixiGC6HpNv2nZL87a9wtVWNU3U8Jz4pFV&outputMint=sol&referrer=ENPAtjzBu7cooehmoP8eYYucZtTybCrP4WDcQ9L8Kfwp" target="_blank" class="buy-button">BUY ON RAYDIUM</a>
-                </div>
-            </div>
+            <h2>Welcome to MetaFrog Ecosystem</h2>
+            <p>The next generation of decentralized gaming on Solana blockchain.</p>
         </section>
 
-        <!-- Sekcja About -->
+        <section id="airdrop" class="section">
+            <h2 style="text-align: center;">🔥 $MFROG AIRDROP 🔥</h2>
+            <p id="participant-count" style="text-align: center;">Loading participants...</p>
+            
+            <form class="airdrop-form">
+                <div class="form-group">
+                    <label for="wallet">SOL Wallet Address*</label>
+                    <input type="text" id="wallet" placeholder="Enter your SOL address" required>
+                </div>
+                <div class="form-group">
+                    <label for="xUsername">X (Twitter) Username*</label>
+                    <input type="text" id="xUsername" placeholder="@yourusername" required>
+                </div>
+                <div class="form-group">
+                    <label for="telegram">Telegram Username*</label>
+                    <input type="text" id="telegram" placeholder="@yourusername" required>
+                </div>
+                <button type="submit" class="submit-btn">JOIN AIRDROP</button>
+            </form>
+        </section>
+
         <section id="about" class="section">
-            <h1 class="roadmap-heading">About MetaFrog</h1>
-
-            <!-- 4 Bloczek z informacjami -->
-            <div class="about-blocks">
-                <div class="block">
-                    <h2>Revolutionizing Metaverse</h2>
-                    <p>MetaFrog aims to be at the forefront of the metaverse, offering a seamless experience for all users through innovative technology.</p>
-                </div>
-                <div class="block">
-                    <h2>Strong Community</h2>
-                    <p>Our community is the core of MetaFrog. We prioritize building a strong, engaged, and vibrant ecosystem for everyone involved.</p>
-                </div>
-                <div class="block">
-                    <h2>Innovative Gameplay</h2>
-                    <p>With immersive games and engaging content, we aim to provide the best gaming experience that aligns with the growing metaverse trend.</p>
-                </div>
-                <div class="block">
-                    <h2>Decentralized Finance</h2>
-                    <p>MetaFrog is not just a game or a token; it's part of the decentralized finance ecosystem, empowering users with complete control over their assets.</p>
-                </div>
-            </div>
-
-            <!-- Roadmap -->
-            <div class="roadmap">
-                <h1>🚀 META FROG ROADMAP 🐸</h1>
-            </div>
-
-            <section class="roadmapa">
-                <!-- Q2 -->
-                <div id="Q2" class="Q">
-                    <h2>Q2 2025</h2>
-                    <ul>
-                        <li>First airdrop for early supporters.</li>
-                        <li>Community building on X, Telegram, Discord, and TikTok.</li>
-                        <li>Development of the first META FROG game.</li>
-                        <li>Airdrop for players of the first META FROG game.</li>
-                    </ul>
-                </div>
-                <!-- Q3 -->
-                <div id="Q3" class="Q">
-                    <h2>Q3 2025</h2>
-                    <ul>
-                        <li>META FROG staking launch.</li>
-                        <li>Expansion to larger CEX listings.</li>
-                        <li>Marketing campaign, viral content, and trends.</li>
-                        <li>META FROG related NFTs (limited collection).</li>
-                        <li>Gamification, missions, and engagement rewards.</li>
-                    </ul>
-                </div>
-                <!-- Q4 -->
-                <div id="Q4" class="Q">
-                    <h2>Q4 2025</h2>
-                    <ul>
-                        <li>Major strategic partnerships.</li>
-                        <li>Listing on TOP 5 CEXs.</li>
-                        <li>META FROG DAO, community-driven decision-making.</li>
-                        <li>Partnerships in the metaverse and gaming industry, integrating META FROG with other ecosystems.</li>
-                    </ul>
-                </div>
-                <!-- Q1 -->
-                <div id="Q1" class="Q">
-                    <h2>Q1 2026</h2>
-                    <ul>
-                        <li>META FROG Metaverse Hub, a virtual space for the community.</li>
-                        <li>Integration with other metaverse platforms and games.</li>
-                        <li>Development of new use cases for the META FROG token.</li>
-                    </ul>
-                </div>
-                <!-- Strzałki -->
-                <div class="arrows">
-                    <div class="arrow arrow-Q2-Q3"></div>
-                    <div class="arrow arrow-Q3-Q4"></div>
-                    <div class="arrow arrow-Q4-Q1"></div>
-                </div>
-            </section>
-
-            <!-- Sekcja Tokenomics -->
-            <div id="tokenomics" class="tokenomics">
-                <h1>Tokenomics</h1>
-                <div class="tokenomics-grid">
-                    <div class="token-box">
-                        <h2>Total Supply</h2>
-                        <p>1,000,000,000 $MFROG</p>
-                    </div>
-                    <div class="token-box">
-                        <h2>Liquidity Pool</h2>
-                        <p>68.3%</p>
-                    </div>
-                    <div class="token-box">
-                        <h2>Future Airdrops</h2>
-                        <p>10%</p>
-                    </div>
-                    <div class="token-box">
-                        <h2>Marketing & CEX</h2>
-                        <p>10%</p>
-                    </div>
-                    <div class="token-box">
-                        <h2>Dev Team</h2>
-                        <p>7%</p>
-                    </div>
-                    <div class="token-box">
-                        <h2>Reserve</h2>
-                        <p>4.7%</p>
-                    </div>
-                </div>
-                <h1>🔥 Burn Mechanism Coming Soon! 🔥</h1>
-            </div>
+            <h2>About MetaFrog</h2>
+            <p>Revolutionizing gaming with blockchain technology.</p>
         </section>
-
-        <!-- Sekcja Games -->
-        <section id="games" class="section">
-            <h1>Games - Coming Soon!</h1>
-            <p>Stay tuned for upcoming games in the MetaFrog universe.</p>
-        </section>
-
-        <!-- Sekcja Staking -->
-        <section id="staking" class="section">
-            <h1>Staking - Coming Soon!</h1>
-            <p>Get ready for staking opportunities with MetaFrog.</p>
-        </section>
-
-    <!-- Airdrop Section -->
-<section id="airdrop" class="section">
-    <div class="airdrop-header">
-        <h1>
-            <span class="fire-emoji">🔥</span> 
-            <span class="text">$MFROG AIRDROP</span> 
-            <span class="fire-emoji">🔥</span>
-        </h1>
-        <p class="airdrop-subtitle">Claim your free tokens by completing simple tasks</p>
     </div>
-    
-    <div class="airdrop-steps-container">
-        <div class="airdrop-steps">
-            <div class="step-card completed-step">
-                <div class="step-number">1</div>
-                <h3>Register for Airdrop</h3>
-                <p>Enter your SOL wallet address, provide your X (Twitter), Telegram, and TikTok usernames</p>
-                <div class="step-status">COMPLETED</div>
-            </div>
-            
-            <div class="step-card active-step">
-                <div class="step-number">2</div>
-                <h3>Complete Tasks</h3>
-                <p>Finish the required actions to qualify for the airdrop</p>
-                <div class="step-status">ACTIVE</div>
-            </div>
-            
-            <div class="step-card pending-step">
-                <div class="step-number">3</div>
-                <h3>Wait for Airdrop Completion</h3>
-                <p>Once the tasks are completed and verified, you'll need to wait for the airdrop to finish before receiving your tokens</p>
-                <div class="step-status">PENDING</div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="airdrop-content-wrapper">
-        <!-- Lewa kolumna -->
-        <div class="airdrop-left-column">
-            <div class="airdrop-form-container">
-                <div class="form-header">
-                    <h3>Participate in Airdrop</h3>
-                </div>
-                <form class="airdrop-form">
-                    <div class="form-group">
-                        <label for="wallet">Wallet Address*</label>
-                        <input type="text" id="wallet" placeholder="Enter SOL address" required>
-                        <span class="required-field">Required</span>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="xUsername">X (Twitter) Username*</label>
-                        <input type="text" id="xUsername" placeholder="@yourusername" required>
-                        <span class="required-field">Required</span>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="telegram">Telegram Username*</label>
-                        <input type="text" id="telegram" placeholder="@yourusername" required>
-                        <span class="required-field">Required</span>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="tiktok">TikTok Username</label>
-                        <input type="text" id="tiktok" placeholder="@yourusername">
-                        <span class="required-field">Optional</span>
-                    </div>
-                    
-                    <button type="submit" class="submit-btn">
-                        Submit
-                    </button>
-                </form>
-            </div>
-            
-            <div class="airdrop-status">
-                <div class="status-card">
-                    <div class="status-icon">✓</div>
-                    <h3>Airdrop Status</h3>
-                    <p>Current phase: Registration Open</p>
-                    
-                    <div class="status-details">
-                        <div class="status-item">
-                            <span class="status-label">Participants:</span>
-                            <span class="status-value" id="participants-counter">0</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Tokens Allocation:</span>
-                            <span class="status-value" id="tokens-counter">0</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Duration:</span>
-                            <span class="status-value">Limited time</span>
-                        </div>
-                    </div>
-                    
-                    <div class="status-note">
-                        <p>To receive the airdrop, all <strong>required</strong> tasks must be completed. After manual verification (within 7 days after the campaign ends), tokens will be distributed.</p>
-                        <p>Additional tasks can be completed to earn extra airdrop rewards.</p>
-                        <p>Incomplete or unverified submissions will not be eligible for rewards.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Prawa kolumna -->
-        <div class="airdrop-right-column">
-            <div class="airdrop-tasks-container">
-                <div class="tasks-header">
-                    <h3>Airdrop Tasks</h3>
-                </div>
-                
-                <div class="tasks-grid">
-                    <div class="task-card required-task" twitter-task>
-                        <div class="task-icon"><i class="fab fa-twitter"></i></div>
-                        <div class="task-content">
-                            <h4>Follow us on Twitter</h4>
-                            <div class="task-description">Follow our official Twitter account</div>
-                            <div class="task-reward">Reward: Generous amount</div>
-                            <a href="https://x.com/MFROG_coin" target="_blank" class="task-link twitter-link">
-                                <i class="fas fa-external-link-alt"></i> Go to Twitter
-                            </a>
-                            <span class="twitter-verification verification-status"></span>
-                        </div>
-                    </div>
-                    
-                    <div class="task-card required-task" telegram-task>
-                        <div class="task-icon"><i class="fab fa-telegram"></i></div>
-                        <div class="task-content">
-                            <h4>Join Telegram</h4>
-                            <div class="task-description">Join our Telegram community</div>
-                            <div class="task-reward">Reward: Generous amount</div>
-                            <a href="https://t.me/mfrog_coin" target="_blank" class="task-link telegram-link">
-                                <i class="fas fa-external-link-alt"></i> Join Telegram
-                            </a>
-                            <span class="telegram-verification verification-status"></span>
-                        </div>
-                    </div>
-                    
-                    <div class="task-card required-task" tiktok-task>
-                        <div class="task-icon"><i class="fab fa-tiktok"></i></div>
-                        <div class="task-content">
-                            <h4>Follow on TikTok</h4>
-                            <div class="task-description">Follow our TikTok account</div>
-                            <div class="task-reward">Reward: Generous amount</div>
-                            <a href="https://www.tiktok.com/@froggychilltoken" target="_blank" class="task-link tiktok-link">
-                                <i class="fas fa-external-link-alt"></i> Go to TikTok
-                            </a>
-                            <span class="tiktok-verification verification-status"></span>
-                        </div>
-                    </div>
 
-                    <div class="task-card required-task">
-                        <div class="task-icon"><i class="fab fa-chart-line"></i></div>
-                        <div class="task-content">
-                          <h4>Check DexScreener</h4>
-                          <div class="task-description">Visit our DexScreener page</div>
-                          <div class="task-reward">Reward: Generous amount</div>
-                          <a href="https://dexscreener.com/solana/EGYCrdkH3exixiGC6HpNv2nZL87a9wtVWNU3U8Jz4pFV" 
-                             class="task-link dexscreener-link"
-                             target="_blank">
-                            <i class="fas fa-external-link-alt"></i> Visit DexScreener
-                          </a>
-                          <span class="dexscreener-verification verification-status"></span>
-                        </div>
-                      </div>
-                    
-                    <div class="task-card optional-task">
-                        <div class="task-icon"><i class="fas fa-retweet"></i></div>
-                        <div class="task-content">
-                            <h4>Retweet Pinned Post</h4>
-                            <div class="task-description">Retweet our pinned tweet</div>
-                            <div class="task-reward">Bonus reward</div>
-                            <a href="https://x.com/MFROG_coin" target="_blank" class="task-link retweet-link">
-                                <i class="fas fa-external-link-alt"></i> Retweet Now
-                            </a>
-                            <span class="retweet-verification verification-status"></span>
-                        </div>
-                    </div>
-                    
-                    <div class="task-card optional-task">
-                        <div class="task-icon"><i class="fas fa-user-plus"></i></div>
-                        <div class="task-content">
-                            <h4>Refer Friends</h4>
-                            <div class="task-description">Invite friends to participate</div>
-                            <div class="task-reward">Extra bonus</div>
-                            <button class="task-link referral-link" id="copy-referral-btn">
-                                <i class="fas fa-copy"></i> Copy Referral Link
-                            </button>
-                            <span class="referral-verification verification-status"></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-    <!-- Footer -->
     <footer>
         <div class="social-links">
-            <a href="https://dexscreener.com/solana/EGYCrdkH3exixiGC6HpNv2nZL87a9wtVWNU3U8Jz4pFV" target="_blank" rel="noopener noreferrer">DEXSCREENER</a>
-            <a href="https://x.com/MFROG_coin" target="_blank" rel="noopener noreferrer">TWITTER (X)</a>
-            <a href="https://t.me/mfrog_coin" target="_blank" rel="noopener noreferrer">TELEGRAM</a>
-            <a href="https://www.tiktok.com/@froggychilltoken" target="_blank" rel="noopener noreferrer">TIKTOK</a>
-            <a href="ComingSoon!" target="_blank" rel="noopener noreferrer">DISCORD</a>
+            <a href="https://x.com/MFROG_coin" target="_blank">Twitter</a>
+            <a href="https://t.me/mfrog_coin" target="_blank">Telegram</a>
         </div>
     </footer>
-        </div>
-    
-        <script>
-        // Initialize Firebase
+
+    <script>
+        // Konfiguracja Firebase - ZASTĄP TYM Z TWOJEGO PROJEKTU!
         const firebaseConfig = {
-            apiKey: "AIzaSyAR6Ha8baMX5EPsPVayTno0e0QBRqZrmco",
-            authDomain: "metafrog-airdrop.firebaseapp.com",
-            databaseURL: "https://metafrog-airdrop-default-rtdb.firebaseio.com",
-            projectId: "metafrog-airdrop",
-            storageBucket: "metafrog-airdrop.appspot.com",
-            messagingSenderId: "546707737127",
-            appId: "1:546707737127:web:67956ae63ffef3ebeddc02",
-            measurementId: "G-2Z78VYL739"
+            apiKey: "AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ12345678",
+            authDomain: "your-project.firebaseapp.com",
+            projectId: "your-project-id",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:abcdef1234567890"
         };
 
-        // Initialize Firebase
+        // Inicjalizacja Firebase
         const app = firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+        const db = firebase.firestore();
 
-        // Function to handle form submission
-        function handleAirdropForm(event) {
-            event.preventDefault();
+        // Obsługa nawigacji
+        document.querySelectorAll('nav a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const target = e.target.getAttribute('href');
+                document.querySelectorAll('.section').forEach(section => {
+                    section.classList.remove('active');
+                });
+                document.querySelector(target).classList.add('active');
+            });
+        });
+
+        // Obsługa formularza airdrop
+        document.querySelector('.airdrop-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
             
-            // Get form values
             const wallet = document.getElementById('wallet').value.trim();
             const xUsername = document.getElementById('xUsername').value.trim();
             const telegram = document.getElementById('telegram').value.trim();
-            const tiktok = document.getElementById('tiktok').value.trim();
 
-            // Validate form
+            // Prosta walidacja
             if (!wallet || !xUsername || !telegram) {
-                showAlert('Please fill all required fields', 'error');
+                alert('Please fill all required fields!');
                 return;
             }
 
-            // Create user data object
-            const userData = {
-                wallet: wallet,
-                xUsername: xUsername.startsWith('@') ? xUsername : `@${xUsername}`,
-                telegram: telegram.startsWith('@') ? telegram : `@${telegram}`,
-                tiktok: tiktok ? (tiktok.startsWith('@') ? tiktok : `@${tiktok}`) : 'N/A',
-                timestamp: firebase.database.ServerValue.TIMESTAMP,
-                status: 'registered',
-                completedTasks: {
-                    registration: true
-                },
-                points: 10,
-                referralCode: generateReferralCode()
-            };
-
-            // Save to Firebase
-            database.ref('airdropParticipants/' + wallet).set(userData)
-                .then(() => {
-                    // Success - update UI
-                    showAlert('Registration successful!', 'success');
-                    
-                    // Change stage to Step 2
-                    updateProgress(2);
-                    
-                    // Lock form fields
-                    document.getElementById('wallet').readOnly = true;
-                    document.getElementById('xUsername').readOnly = true;
-                    document.getElementById('telegram').readOnly = true;
-                    
-                    // Save to local storage
-                    localStorage.setItem('mfrog_user', wallet);
-                    
-                    // Initialize counters
-                    initCounters();
-                })
-                .catch((error) => {
-                    console.error('Error saving data:', error);
-                    showAlert('Error saving your data. Please try again.', 'error');
-                });
-        }
-
-        // Function to update progress steps
-        function updateProgress(currentStep) {
-            const steps = document.querySelectorAll('.step-card');
-            
-            steps.forEach((step, index) => {
-                // Remove all classes first
-                step.classList.remove('completed-step', 'active-step', 'pending-step');
+            try {
+                // Sprawdź duplikaty
+                const snapshot = await db.collection('participants')
+                    .where('wallet', '==', wallet)
+                    .get();
                 
-                if (index < currentStep - 1) {
-                    step.classList.add('completed-step');
-                } else if (index === currentStep - 1) {
-                    step.classList.add('active-step');
-                } else {
-                    step.classList.add('pending-step');
+                if (!snapshot.empty) {
+                    alert('This wallet is already registered!');
+                    return;
                 }
-            });
-        }
 
-        // Check if user already registered
-        function checkPreviousUser() {
-            const savedUser = localStorage.getItem('mfrog_user');
-            if (savedUser) {
-                // User already registered - update UI
-                updateProgress(2);
-                document.getElementById('wallet').readOnly = true;
-                document.getElementById('xUsername').readOnly = true;
-                document.getElementById('telegram').readOnly = true;
-                
-                // Check completed tasks
-                checkCompletedTasks(savedUser);
-            }
-        }
-
-        // Check completed tasks for user
-        function checkCompletedTasks(wallet) {
-            database.ref('airdropParticipants/' + wallet + '/completedTasks').once('value')
-                .then((snapshot) => {
-                    const tasks = snapshot.val();
-                    if (tasks) {
-                        for (const task in tasks) {
-                            if (tasks[task]) {
-                                markTaskCompleted(task);
-                            }
-                        }
-                    }
+                // Zapisz dane
+                await db.collection('participants').add({
+                    wallet,
+                    xUsername,
+                    telegram,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    status: 'pending'
                 });
-        }
 
-        // Function to verify task completion
-        function verifyTask(taskName, element) {
-            const wallet = localStorage.getItem('mfrog_user');
-            if (!wallet) {
-                showAlert('Please register first', 'error');
-                return;
+                alert('✅ Success! You are now registered for the airdrop.');
+                updateParticipantCount();
+            } catch (error) {
+                console.error("Error:", error);
+                alert('Error occurred. Please try again.');
             }
-
-            // Update in Firebase
-            const updates = {};
-            updates[`airdropParticipants/${wallet}/completedTasks/${taskName}`] = true;
-            updates[`airdropParticipants/${wallet}/points`] = firebase.database.ServerValue.increment(10);
-            
-            database.ref().update(updates)
-                .then(() => {
-                    // Mark as verified in UI
-                    markTaskCompleted(taskName);
-                    showAlert(`Task ${taskName} verified!`, 'success');
-                })
-                .catch(error => {
-                    console.error('Error updating task:', error);
-                    showAlert('Error verifying task. Please try again.', 'error');
-                });
-        }
-
-        // Mark task as completed in UI
-        function markTaskCompleted(taskName) {
-            const element = document.querySelector(`.${taskName}-verification`);
-            if (element) {
-                element.innerHTML = '<i class="fas fa-check-circle"></i> Verified';
-                element.style.color = '#4CAF50';
-            }
-        }
-
-        // Generate referral code
-        function generateReferralCode() {
-            return Math.random().toString(36).substring(2, 8).toUpperCase();
-        }
-
-        // Copy referral link
-        function copyReferralLink() {
-            const wallet = localStorage.getItem('mfrog_user');
-            if (!wallet) {
-                showAlert('Please register first', 'error');
-                return;
-            }
-            
-            database.ref('airdropParticipants/' + wallet + '/referralCode').once('value')
-                .then((snapshot) => {
-                    const referralCode = snapshot.val();
-                    const referralLink = `${window.location.origin}?ref=${referralCode}`;
-                    
-                    navigator.clipboard.writeText(referralLink)
-                        .then(() => {
-                            showAlert('Referral link copied!', 'success');
-                            markTaskCompleted('referral');
-                        })
-                        .catch(err => {
-                            console.error('Error copying:', err);
-                            showAlert('Error copying referral link', 'error');
-                        });
-                });
-        }
-
-        // Show alert message
-        function showAlert(message, type) {
-            const alert = document.createElement('div');
-            alert.className = `alert ${type}`;
-            alert.textContent = message;
-            document.body.appendChild(alert);
-            setTimeout(() => alert.remove(), 3000);
-        }
-
-        // Initialize counters animation
-        function initCounters() {
-            animateCounter('participants-counter', 12500);
-            animateCounter('tokens-counter', 2500000);
-        }
-
-        // Animate counter
-        function animateCounter(elementId, target) {
-            const element = document.getElementById(elementId);
-            if (!element) return;
-            
-            let current = 0;
-            const increment = target / 100;
-            const timer = setInterval(() => {
-                current += increment;
-                element.textContent = Math.floor(current).toLocaleString();
-                if (current >= target) {
-                    element.textContent = target.toLocaleString();
-                    clearInterval(timer);
-                }
-            }, 20);
-        }
-
-        // Initialize when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            // Check for previous registration
-            checkPreviousUser();
-            
-            // Add form submit handler
-            const form = document.querySelector('.airdrop-form');
-            if (form) {
-                form.addEventListener('submit', handleAirdropForm);
-            }
-            
-            // Add task completion handlers
-            document.querySelectorAll('.task-link').forEach(link => {
-                if (link.classList.contains('dexscreener-link')) {
-                    link.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        verifyTask('dexscreener', this);
-                    });
-                }
-                if (link.classList.contains('twitter-link')) {
-                    link.addEventListener('click', function(e) {
-                        verifyTask('twitter', this);
-                    });
-                }
-                if (link.classList.contains('telegram-link')) {
-                    link.addEventListener('click', function(e) {
-                        verifyTask('telegram', this);
-                    });
-                }
-                if (link.classList.contains('tiktok-link')) {
-                    link.addEventListener('click', function(e) {
-                        verifyTask('tiktok', this);
-                    });
-                }
-                if (link.classList.contains('retweet-link')) {
-                    link.addEventListener('click', function(e) {
-                        verifyTask('retweet', this);
-                    });
-                }
-            });
-            
-            // Add referral button handler
-            document.getElementById('copy-referral-btn')?.addEventListener('click', function(e) {
-                e.preventDefault();
-                copyReferralLink();
-            });
-            
-            // Initialize counters
-            initCounters();
         });
-        </script>
-    </body>
+
+        // Aktualizuj licznik uczestników
+        async function updateParticipantCount() {
+            try {
+                const count = await db.collection('participants').count().get();
+                document.getElementById('participant-count').textContent = 
+                    `${count.data().count.toLocaleString()} participants joined!`;
+            } catch (error) {
+                console.error("Error counting participants:", error);
+            }
+        }
+
+        // Inicjalizacja
+        document.addEventListener('DOMContentLoaded', () => {
+            updateParticipantCount();
+        });
+    </script>
+</body>
 </html>
