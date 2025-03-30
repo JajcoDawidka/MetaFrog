@@ -1,6 +1,6 @@
 /**
  * MetaFrog - Complete Website Script
- * Version 4.1 - Fixed Navigation
+ * Version 4.2 - Fixed Form Submission
  */
 
 const firebaseConfig = {
@@ -16,6 +16,7 @@ const firebaseConfig = {
 const MetaFrogApp = {
   debugMode: false,
   isProcessing: false,
+  db: null,
 
   init() {
     // Initialize smooth scrolling
@@ -25,14 +26,16 @@ const MetaFrogApp = {
     try {
       firebase.initializeApp(firebaseConfig);
       this.db = firebase.firestore();
-      console.log('Firebase initialized');
+      console.log('Firebase initialized successfully');
     } catch (error) {
-      console.error('Firebase error:', error);
+      console.error('Firebase initialization error:', error);
+      this.showAlert('⚠️ Connection error - using fallback mode', 'warning');
     }
 
     this.setupEventListeners();
     this.handleInitialRoute();
-    this.initCounters();
+    this.setupFormValidation();
+    this.setupUsernameFormatting();
     this.checkVerificationStatus();
     this.initializeAirdropSteps();
     this.scrollToTop(true);
@@ -65,14 +68,53 @@ const MetaFrogApp = {
     });
 
     // Form submission
-    document.querySelector('.airdrop-form')?.addEventListener('submit', (e) => {
-      e.preventDefault();
-      this.handleAirdropForm(e);
-    });
+    const form = document.querySelector('.airdrop-form');
+    if (form) {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.handleAirdropForm(e);
+      });
+    }
 
     // Handle browser back/forward
     window.addEventListener('popstate', () => {
       this.handleInitialRoute();
+    });
+
+    // Copy referral link button
+    const copyBtn = document.querySelector('.task-link[onclick*="copyReferralLink"]');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.copyReferralLink();
+      });
+    }
+  },
+
+  setupFormValidation() {
+    const walletInput = document.getElementById('wallet');
+    if (walletInput) {
+      walletInput.addEventListener('blur', () => {
+        if (walletInput.value && !this.isValidSolanaAddress(walletInput.value)) {
+          walletInput.style.borderColor = 'red';
+          this.showAlert('Invalid Solana wallet address', 'error');
+        } else {
+          walletInput.style.borderColor = '';
+        }
+      });
+    }
+  },
+
+  setupUsernameFormatting() {
+    ['xUsername', 'telegram', 'tiktok'].forEach(id => {
+      const input = document.getElementById(id);
+      if (input) {
+        input.addEventListener('blur', () => {
+          if (input.value && !input.value.startsWith('@')) {
+            input.value = `@${input.value}`;
+          }
+        });
+      }
     });
   },
 
@@ -105,49 +147,50 @@ const MetaFrogApp = {
     this.isProcessing = true;
     this.toggleSubmitButton(true);
 
-    const wallet = document.getElementById('wallet').value.trim();
-    const xUsername = document.getElementById('xUsername').value.trim();
-    const telegram = document.getElementById('telegram').value.trim();
-    const tiktok = document.getElementById('tiktok').value.trim();
-
-    // Validation
-    if (!wallet || !xUsername || !telegram) {
-      this.showAlert('Please fill all required fields', 'error');
-      this.isProcessing = false;
-      this.toggleSubmitButton(false);
-      return;
-    }
-
-    if (!this.isValidSolanaAddress(wallet)) {
-      this.showAlert('Invalid Solana wallet address', 'error');
-      this.isProcessing = false;
-      this.toggleSubmitButton(false);
-      return;
-    }
-
-    const submissionData = {
-      wallet,
-      xUsername: xUsername.startsWith('@') ? xUsername : `@${xUsername}`,
-      telegram: telegram.startsWith('@') ? telegram : `@${telegram}`,
-      tiktok: tiktok ? (tiktok.startsWith('@') ? tiktok : `@${tiktok}`) : 'N/A',
-      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-      completedTasks: [],
-      status: 'registered',
-      verificationStatus: {
-        twitter: false,
-        telegram: false,
-        tiktok: false,
-        dexscreener: false
-      }
-    };
-
     try {
-      if (this.debugMode) {
-        await new Promise(resolve => setTimeout(resolve, 800));
-      } else {
-        await this.db.collection('airdropParticipants').doc(wallet).set(submissionData);
+      const wallet = document.getElementById('wallet').value.trim();
+      const xUsername = document.getElementById('xUsername').value.trim();
+      const telegram = document.getElementById('telegram').value.trim();
+      const tiktok = document.getElementById('tiktok').value.trim();
+
+      // Validation
+      if (!wallet || !xUsername || !telegram) {
+        throw new Error('Please fill all required fields');
       }
 
+      if (!this.isValidSolanaAddress(wallet)) {
+        throw new Error('Invalid Solana wallet address');
+      }
+
+      const submissionData = {
+        wallet,
+        xUsername: xUsername.startsWith('@') ? xUsername : `@${xUsername}`,
+        telegram: telegram.startsWith('@') ? telegram : `@${telegram}`,
+        tiktok: tiktok ? (tiktok.startsWith('@') ? tiktok : `@${tiktok}`) : 'N/A',
+        timestamp: new Date().toISOString(),
+        completedTasks: [],
+        status: 'registered',
+        verificationStatus: {
+          twitter: false,
+          telegram: false,
+          tiktok: false,
+          dexscreener: false
+        }
+      };
+
+      // Debug mode - simulate submission
+      if (this.debugMode) {
+        console.log('Debug mode - submission data:', submissionData);
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      } 
+      // Production mode - save to Firebase
+      else if (this.db) {
+        await this.db.collection('airdropParticipants').doc(wallet).set(submissionData);
+      } else {
+        throw new Error('Database connection error');
+      }
+
+      // Update UI after success
       this.updateStepStatus(1, 'completed');
       this.updateStepStatus(2, 'active');
       this.updateStepStatus(3, 'pending');
@@ -156,7 +199,7 @@ const MetaFrogApp = {
       
     } catch (error) {
       console.error('Submission error:', error);
-      this.showAlert('❌ Submission failed', 'error');
+      this.showAlert(`❌ ${error.message}`, 'error');
     } finally {
       this.isProcessing = false;
       this.toggleSubmitButton(false);
@@ -205,6 +248,9 @@ const MetaFrogApp = {
   },
 
   showAlert(message, type = 'error') {
+    // Remove existing alerts first
+    document.querySelectorAll('.mfrog-alert').forEach(alert => alert.remove());
+    
     const alert = document.createElement('div');
     alert.className = `mfrog-alert ${type}`;
     alert.innerHTML = `
@@ -248,7 +294,7 @@ const MetaFrogApp = {
   copyReferralLink() {
     const link = `${window.location.origin}${window.location.pathname}?ref=${this.generateReferralCode()}`;
     navigator.clipboard.writeText(link)
-      .then(() => this.showAlert('Referral link copied!', 'success'))
+      .then(() => this.showAlert('Referral link copied to clipboard!', 'success'))
       .catch(err => {
         console.error('Copy error:', err);
         this.showAlert('Failed to copy link', 'error');
@@ -264,24 +310,27 @@ const MetaFrogApp = {
            /^[A-HJ-NP-Za-km-z1-9]*$/.test(address);
   },
 
-  initCounters() {
-    this.animateCounter('participants-counter', 12500);
-    this.animateCounter('tokens-counter', 2500000);
-  },
-
-  animateCounter(id, target) {
-    const element = document.getElementById(id);
-    if (!element) return;
-    
-    let current = 0;
-    const timer = setInterval(() => {
-      current += target / 100;
-      element.textContent = Math.floor(current).toLocaleString();
-      if (current >= target) {
-        element.textContent = target.toLocaleString();
-        clearInterval(timer);
+  // Admin function to view submissions
+  async viewSubmissions() {
+    try {
+      if (!this.db) {
+        throw new Error('Firebase not initialized');
       }
-    }, 20);
+      
+      const snapshot = await this.db.collection('airdropParticipants').get();
+      const submissions = [];
+      snapshot.forEach(doc => {
+        submissions.push(doc.data());
+      });
+      
+      console.table(submissions);
+      return submissions;
+      
+    } catch (error) {
+      console.error('Error fetching submissions:', error);
+      this.showAlert(`❌ ${error.message}`, 'error');
+      return [];
+    }
   }
 };
 
@@ -317,6 +366,11 @@ style.textContent = `
     border-left: 5px solid #c62828;
   }
   
+  .mfrog-alert.warning {
+    background: #ff9800;
+    border-left: 5px solid #e65100;
+  }
+  
   .mfrog-alert-content {
     line-height: 1.5;
   }
@@ -331,6 +385,26 @@ style.textContent = `
   
   @keyframes fadeOut {
     to { opacity: 0; transform: translateX(200%); }
+  }
+
+  /* Completed step styling */
+  .completed-step {
+    border-color: #4CAF50 !important;
+    background: linear-gradient(135deg, #1a1a1a, #0a2e0a) !important;
+  }
+
+  .completed-step .step-number {
+    background: #4CAF50 !important;
+    border-color: #4CAF50 !important;
+  }
+
+  .completed-step h3 {
+    color: #4CAF50 !important;
+  }
+
+  .completed-step .step-status {
+    background: rgba(76, 175, 80, 0.2) !important;
+    color: #4CAF50 !important;
   }
 `;
 document.head.appendChild(style);
