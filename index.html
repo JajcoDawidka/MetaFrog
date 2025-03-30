@@ -7,23 +7,14 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script>
-    (function() {
-        const redirectPath = localStorage.getItem('mfrog_redirect');
-        if (redirectPath) {
-            localStorage.removeItem('mfrog_redirect');
-            const checkApp = setInterval(() => {
-                if (window.app && window.app.initialized) {
-                    clearInterval(checkApp);
-                    const section = redirectPath.replace(/^\//, '').split('/')[0] || 'home';
-                    if (['home', 'games', 'airdrop', 'staking', 'about'].includes(section)) {
-                        window.app.navigateTo(section);
-                    }
-                }
-            }, 50);
-        }
-    })();
-</script>
 </head>
+    <script>
+  // Simple 404 handling for GitHub Pages
+  if (window.location.pathname !== '/' && 
+      !['/home','/games','/airdrop','/staking','/about'].includes(window.location.pathname)) {
+    window.location.href = '/';
+  }
+</script>
 <body>
     <!-- Nagłówek strony -->
     <header>
@@ -31,12 +22,12 @@
         <nav>
             <div id="zakladki">
                 <ul>
-                    <li><a href="/" onclick="showHome(); return false;">Home</a></li>
-                    <li><a href="/games" onclick="showGames(); return false;">Games</a></li>
-                    <li><a href="/airdrop" onclick="showAirdrop(); return false;">🔥 AIRDROP 🔥</a></li>
-                    <li><a href="/staking" onclick="showStaking(); return false;">Staking</a></li>
-                    <li><a href="/about" onclick="showAbout(); return false;">About</a></li>
-                </ul>
+    <li><a href="/">Home</a></li>
+    <li><a href="/games">Games</a></li>
+    <li><a href="/airdrop">🔥 AIRDROP 🔥</a></li>
+    <li><a href="/staking">Staking</a></li>
+    <li><a href="/about">About</a></li>
+  </ul>
             </div>
         </nav>
     </header>
