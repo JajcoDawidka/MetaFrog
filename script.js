@@ -1,12 +1,11 @@
 /**
- * MetaFrog - Complete Solution
- * Fixed routing issues for GitHub Pages
+ * MetaFrog - Final Working Version
+ * Fixed all navigation issues
  */
 
 class MetaFrogApp {
   constructor() {
     this.validSections = ['home', 'games', 'airdrop', 'staking', 'about'];
-    this.initialized = false;
     this.init();
   }
 
@@ -15,7 +14,6 @@ class MetaFrogApp {
     this.handleInitialSection();
     this.initAirdrop();
     this.setupEventListeners();
-    this.initialized = true;
   }
 
   // ======================
@@ -29,73 +27,47 @@ class MetaFrogApp {
         this.navigateTo(section);
       });
     });
-
-    window.addEventListener('popstate', () => {
-      this.handleInitialSection();
-    });
   }
 
   handleInitialSection() {
-    // Check for redirect from 404 page first
-    const redirectPath = localStorage.getItem('mfrog_redirect');
-    if (redirectPath) {
-      localStorage.removeItem('mfrog_redirect');
-      const section = this.getSectionFromHref(redirectPath);
-      if (this.isValidPath(section)) {
-        this.navigateTo(section, true);
-        return;
-      }
-    }
-
-    // Normal handling
-    const path = this.getCurrentPath();
-    if (!this.isValidPath(path)) {
-      this.navigateTo('home', true);
-      return;
-    }
-
+    const path = this.getCleanPath(window.location.pathname);
     this.showSection(path);
   }
 
-  navigateTo(section, replace = false) {
-    if (!this.initialized || !this.isValidPath(section)) {
-      setTimeout(() => this.navigateTo(section, replace), 100);
-      return;
-    }
-
-    if (replace) {
-      history.replaceState({ section }, null, `/${section === 'home' ? '' : section}`);
-    } else {
-      history.pushState({ section }, null, `/${section === 'home' ? '' : section}`);
-    }
-
-    this.showSection(section);
+  navigateTo(section) {
+    const cleanSection = this.getCleanPath(section);
+    if (!this.isValidPath(cleanSection)) return;
+    
+    this.showSection(cleanSection);
+    window.history.pushState({}, '', `/${cleanSection === 'home' ? '' : cleanSection}`);
   }
 
   showSection(section) {
-    if (!this.initialized) return;
-
+    // Hide all sections
     document.querySelectorAll('.section').forEach(sec => {
       sec.classList.remove('active');
     });
 
+    // Show requested section
     const sectionEl = document.getElementById(section);
     if (sectionEl) {
       sectionEl.classList.add('active');
       window.scrollTo(0, 0);
     }
 
+    // Update nav styling
     this.updateNavStyle(section);
 
+    // Special handling for airdrop section
     if (section === 'airdrop') {
       this.initAirdrop();
     }
   }
 
   // Helper methods
-  getCurrentPath() {
-    const path = window.location.pathname.replace(/^\//, '').split('/')[0] || 'home';
-    return this.validSections.includes(path) ? path : 'home';
+  getCleanPath(path) {
+    const clean = path.replace(/^\//, '').split('/')[0] || 'home';
+    return this.isValidPath(clean) ? clean : 'home';
   }
 
   isValidPath(path) {
@@ -123,8 +95,6 @@ class MetaFrogApp {
   // AIRDROP MANAGEMENT
   // ==================
   initAirdrop() {
-    if (!this.initialized) return;
-
     this.resetAirdropSteps();
     
     if (localStorage.getItem('airdropFormSubmitted')) {
@@ -266,10 +236,15 @@ class MetaFrogApp {
   }
 }
 
-// Initialize the app with redirect handling
+// Initialize the app
 document.addEventListener('DOMContentLoaded', () => {
   window.app = new MetaFrogApp();
   
+  // Handle browser back/forward
+  window.addEventListener('popstate', () => {
+    window.app.handleInitialSection();
+  });
+
   // Global functions for HTML onclick handlers
   window.showHome = () => window.app.navigateTo('home');
   window.showGames = () => window.app.navigateTo('games');
