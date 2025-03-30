@@ -164,12 +164,17 @@ const MetaFrogApp = {
         this.realtimeDb.ref(`airdropSubmissions/${wallet.replace(/\./g, '_')}`).set(submissionData)
       ]);
 
-      // Aktualizacja UI
+      // Aktualizacja UI - POPRAWIONE
       this.updateStepStatus(1, 'completed');
       this.updateStepStatus(2, 'active');
       this.updateStepStatus(3, 'pending');
-      this.showAlert('✅ Registration successful!', 'success');
+      
+      // Wyświetlenie komunikatu sukcesu
+      this.showAlert('✅ Registration successful! Please complete the next steps.', 'success');
       localStorage.setItem('mfrog_registered', 'true');
+
+      // Reset formularza
+      e.target.reset();
 
     } catch (error) {
       console.error('Submission error:', error);
@@ -178,6 +183,11 @@ const MetaFrogApp = {
         message = 'Database permissions issue. Please refresh the page.';
       }
       this.showAlert(`❌ ${message}`, 'error');
+      
+      // Przywrócenie poprzedniego stanu kroków w przypadku błędu
+      this.updateStepStatus(1, 'active');
+      this.updateStepStatus(2, 'pending');
+      this.updateStepStatus(3, 'pending');
     } finally {
       this.isProcessing = false;
       this.toggleSubmitButton(false);
@@ -195,13 +205,7 @@ const MetaFrogApp = {
   updateStepStatus(stepNumber, status) {
     const step = document.querySelector(`.step-card:nth-child(${stepNumber})`);
     if (step) {
-      step.classList.remove('completed-step', 'active-step', 'pending-step');
-      step.classList.add(`${status}-step`);
-      
-      const statusElement = step.querySelector('.step-status');
-      if (statusElement) {
-        statusElement.textContent = status.toUpperCase();
-      }
+      this.updateStepElement(step, status);
     }
   },
 
@@ -266,7 +270,16 @@ const MetaFrogApp = {
       submitBtn.disabled = loading;
       submitBtn.innerHTML = loading 
         ? '<i class="fas fa-spinner fa-spin"></i> Processing...' 
-        : 'Submit';
+        : 'Submit & Continue';
+        
+      // Dodanie stylów dla lepszej widoczności
+      if (loading) {
+        submitBtn.style.opacity = '0.7';
+        submitBtn.style.cursor = 'not-allowed';
+      } else {
+        submitBtn.style.opacity = '1';
+        submitBtn.style.cursor = 'pointer';
+      }
     }
   },
 
@@ -430,6 +443,25 @@ style.textContent = `
   .completed-step .step-status {
     background: rgba(76, 175, 80, 0.2) !important;
     color: #4CAF50 !important;
+  }
+  
+  .active-step {
+    border-color: #2196F3 !important;
+    background: linear-gradient(135deg, #1a1a1a, #0a1a2e) !important;
+  }
+  
+  .active-step .step-number {
+    background: #2196F3 !important;
+    border-color: #2196F3 !important;
+  }
+  
+  .active-step h3 {
+    color: #2196F3 !important;
+  }
+  
+  .active-step .step-status {
+    background: rgba(33, 150, 243, 0.2) !important;
+    color: #2196F3 !important;
   }
 `;
 document.head.appendChild(style);
