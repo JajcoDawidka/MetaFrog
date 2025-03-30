@@ -1,6 +1,7 @@
-// Importowanie funkcji z Firebase SDK
+// Importowanie funkcji Firebase
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, set, get, child, update } from "firebase/database";
+import { getAnalytics } from "firebase/analytics";
+import { getDatabase, ref, set, get, child } from "firebase/database";
 
 // Konfiguracja Firebase
 const firebaseConfig = {
@@ -16,134 +17,98 @@ const firebaseConfig = {
 
 // Inicjalizacja Firebase
 const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 const db = getDatabase(app);
 
-// Funkcja do załadowania i zaktualizowania kroków
-function updateSteps() {
-  const step1 = document.getElementById('step1');
-  const step2 = document.getElementById('step2');
-  const step3 = document.getElementById('step3');
-  
-  // Jeżeli formularz został wysłany, zaktualizuj statusy kroków
-  if (localStorage.getItem('mfrogAirdropSubmitted') === 'true') {
-    step1.classList.add('completed-step');
-    step1.classList.remove('active-step');
-    step2.classList.add('active-step');
-    step2.classList.remove('pending-step');
-  } else {
-    step1.classList.add('active-step');
-    step1.classList.remove('completed-step');
-    step2.classList.add('pending-step');
-    step2.classList.remove('active-step');
-  }
-}
-
-// Funkcja do obsługi formularza
-async function handleAirdropFormSubmission(event) {
-  event.preventDefault();
-
-  const wallet = document.getElementById('wallet').value.trim();
-  const xUsername = document.getElementById('xUsername').value.trim();
-  const telegram = document.getElementById('telegram').value.trim();
-  const tiktok = document.getElementById('tiktok').value.trim() || 'Not provided';
-  
-  // Weryfikacja formularza
-  if (!wallet || wallet.length < 32 || wallet.length > 44) {
-    alert('Invalid wallet address');
-    return;
-  }
-  if (!xUsername.startsWith('@') || !telegram.startsWith('@')) {
-    alert('Usernames must start with @');
-    return;
-  }
-
-  // Zapisz dane do Firebase
-  const newSubmissionRef = ref(db, 'airdrops/' + Date.now());
-  await set(newSubmissionRef, {
-    wallet: wallet,
-    xUsername: xUsername,
-    telegram: telegram,
-    tiktok: tiktok,
-    date: new Date().toISOString(),
-    verified: false
-  });
-
-  // Zapisz dane w localStorage
-  localStorage.setItem('mfrogAirdropSubmitted', 'true');
-  updateSteps();
-  alert('Airdrop registration successful!');
-}
-
-// Funkcja do weryfikacji zgłoszeń (jeśli wymagane)
-async function verifyAirdropEntry(key) {
-  const entryRef = ref(db, 'airdrops/' + key);
-  await update(entryRef, {
-    verified: true
-  });
-  alert('Entry verified!');
-}
-
-// Funkcja weryfikująca, czy zgłoszenie jest zapisane
-async function checkAirdropSubmission() {
-  if (localStorage.getItem('mfrogAirdropSubmitted') === 'true') {
-    updateSteps();
-  }
-}
-
-// Funkcja do aktualizacji stanu kroków na stronie
-document.addEventListener('DOMContentLoaded', () => {
-  // Inicjalizacja formularza
-  const form = document.getElementById('airdropForm');
-  form.addEventListener('submit', handleAirdropFormSubmission);
-
-  // Weryfikacja stanu zgłoszenia przy ładowaniu strony
-  checkAirdropSubmission();
-
-  // Przechodzenie po zakładkach
-  document.querySelectorAll('nav a').forEach(link => {
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      const sectionId = link.getAttribute('href').substring(1);
-      showSection(sectionId);
+// Funkcja aktualizująca status etapów airdropu w bazie danych
+function updateStepStatus(stepId, status) {
+    const statusRef = ref(db, 'airdrop/steps/' + stepId);
+    set(statusRef, {
+        status: status
     });
-  });
+}
 
-  function showSection(sectionId) {
-    document.querySelectorAll('.section').forEach(section => {
-      section.classList.remove('active');
+// Funkcja pobierająca statusy etapów z bazy danych
+function fetchStepStatuses() {
+    const stepsRef = ref(db, 'airdrop/steps');
+    get(stepsRef).then((snapshot) => {
+        if (snapshot.exists()) {
+            const stepsData = snapshot.val();
+            // Zaktualizuj statusy na stronie
+            for (const [stepId, stepData] of Object.entries(stepsData)) {
+                const statusElement = document.getElementById('status' + stepId);
+                if (statusElement) {
+                    statusElement.textContent = stepData.status;
+                    if (stepData.status === "COMPLETED") {
+                        statusElement.classList.add("completed");
+                    } else if (stepData.status === "ACTIVE") {
+                        statusElement.classList.add("active");
+                    } else {
+                        statusElement.classList.add("pending");
+                    }
+                }
+            }
+        } else {
+            console.log("No data available");
+        }
+    }).catch((error) => {
+        console.error("Error getting document:", error);
     });
-    const section = document.getElementById(sectionId);
-    if (section) section.classList.add('active');
-  }
+}
 
-  // Funkcja do dynamicznego wypełniania tabeli zgłoszeń
-  const airdropList = document.getElementById('airdropList');
-  const airdropRef = ref(db, 'airdrops/');
-  get(airdropRef).then((snapshot) => {
-    if (snapshot.exists()) {
-      const data = snapshot.val();
-      let html = '';
-      for (let key in data) {
-        const entry = data[key];
-        html += `
-          <tr>
-            <td>${entry.wallet}</td>
-            <td>${entry.xUsername}</td>
-            <td>${entry.telegram}</td>
-            <td>${entry.tiktok || '-'}</td>
-            <td>${new Date(entry.date).toLocaleString()}</td>
-            <td>
-              <button onclick="verifyAirdropEntry('${key}')">
-                ✓ Verify
-              </button>
-            </td>
-          </tr>
-        `;
-      }
-      airdropList.innerHTML = html;
+// Funkcja do obsługi formularza airdropu
+document.getElementById("airdropForm").addEventListener("submit", function(event) {
+    event.preventDefault();
+
+    const wallet = document.getElementById("wallet").value;
+    const xUsername = document.getElementById("xUsername").value;
+    const telegram = document.getElementById("telegram").value;
+    const tiktok = document.getElementById("tiktok").value;
+
+    if (!wallet || !xUsername || !telegram) {
+        alert("Please fill in all required fields.");
+        return;
     }
-  }).catch((error) => {
-    console.error('Error fetching data: ', error);
-  });
+
+    // Zapisz dane użytkownika do Firebase
+    const airdropRef = ref(db, 'airdrop/participants/' + wallet);
+    set(airdropRef, {
+        wallet: wallet,
+        xUsername: xUsername,
+        telegram: telegram,
+        tiktok: tiktok || "",  // TikTok jest opcjonalny
+        status: "REGISTERED"
+    }).then(() => {
+        alert("Registration successful. You can now complete the tasks.");
+        updateStepStatus(1, "COMPLETED");  // Aktualizujemy pierwszy krok na "COMPLETED"
+    }).catch((error) => {
+        console.error("Error writing document: ", error);
+    });
 });
 
+// Funkcja do aktualizacji statusu zadania
+function completeTask(taskId) {
+    // Zaktualizuj status zadania w Firebase
+    const taskRef = ref(db, 'airdrop/tasks/' + taskId);
+    set(taskRef, {
+        status: "COMPLETED"
+    }).then(() => {
+        alert("Task completed successfully!");
+        updateStepStatus(2, "ACTIVE");  // Zaktualizuj drugi krok na "ACTIVE"
+    }).catch((error) => {
+        console.error("Error updating task status: ", error);
+    });
+}
+
+// Inicjalizowanie statusów przy załadowaniu strony
+document.addEventListener("DOMContentLoaded", function() {
+    fetchStepStatuses();  // Ładowanie statusów etapów z Firebase
+
+    // Obsługuje kliknięcie przycisków do ukończenia zadań
+    document.querySelectorAll('.task-card').forEach((taskCard) => {
+        taskCard.addEventListener('click', () => {
+            const taskId = taskCard.id.replace('task-', '');  // Pobierz ID zadania
+            completeTask(taskId);  // Ukończ zadanie
+        });
+    });
+});
