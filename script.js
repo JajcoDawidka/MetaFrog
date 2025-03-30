@@ -1,42 +1,23 @@
-// Import Firebase (wersja modularna)
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-import { getDatabase, ref, push, onValue, update } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-
-// Konfiguracja Firebase
-const firebaseConfig = {
-  apiKey: "AIzaSyAR6Ha8baMX5EPsPVayTno0e0QBRqZrmco",
-  authDomain: "metafrog-airdrop.firebaseapp.com",
-  databaseURL: "https://metafrog-airdrop-default-rtdb.firebaseio.com",
-  projectId: "metafrog-airdrop",
-  storageBucket: "metafrog-airdrop.firebasestorage.app",
-  messagingSenderId: "546707737127",
-  appId: "1:546707737127:web:67956ae63ffef3ebeddc02",
-  measurementId: "G-2Z78VYL739"
-};
-
-// Inicjalizacja Firebase
-const app = initializeApp(firebaseConfig);
-const database = getDatabase(app);
-const auth = getAuth(app);
-
-// Logowanie anonimowe
-signInAnonymously(auth).catch(error => {
-  console.error("Błąd logowania:", error);
-});
+/**
+ * MetaFrog - Complete Website Functionality
+ * Includes:
+ * - Section navigation
+ * - Airdrop progress system
+ * - Form validation
+ * - Task verification
+ * - Referral system
+ */
 
 class MetaFrogApp {
   constructor() {
-    this.validSections = ['home', 'games', 'airdrop', 'staking', 'about'];
-    this.currentSection = 'home';
     this.init();
   }
 
   init() {
     this.setupNavigation();
-    this.handleInitialSection();
+    this.initAirdrop();
     this.setupEventListeners();
-    this.preventExternalLinkDefault();
+    this.handleInitialSection();
   }
 
   // ======================
@@ -46,97 +27,65 @@ class MetaFrogApp {
     document.querySelectorAll('nav a').forEach(link => {
       link.addEventListener('click', (e) => {
         e.preventDefault();
-        const href = link.getAttribute('href');
-        const section = href.replace(/^#/, '');
-        this.navigateTo(section);
+        const section = link.getAttribute('href').replace('/', '') || 'home';
+        this.showSection(section);
+        history.pushState(null, null, `/${section === 'home' ? '' : section}`);
       });
     });
-  }
 
-  preventExternalLinkDefault() {
-    document.querySelectorAll('a').forEach(link => {
-      if (link.href && !link.getAttribute('href').startsWith('#')) {
-        link.addEventListener('click', (e) => {
-          if (!link.target || link.target !== '_blank') {
-            e.preventDefault();
-            window.open(link.href, '_blank');
-          }
-        });
-      }
-    });
+    window.addEventListener('popstate', () => this.handleInitialSection());
   }
 
   handleInitialSection() {
-    const hash = window.location.hash;
-    const section = hash ? hash.replace(/^#/, '') : 'home';
-    this.navigateTo(this.isValidPath(section) ? section : 'home');
+    const path = window.location.pathname.replace('/', '') || 'home';
+    this.showSection(path);
   }
 
-  navigateTo(section) {
-    if (!this.isValidPath(section)) {
-      window.location.hash = '#home';
-      this.showSection('home');
-      return;
-    }
-    
-    this.currentSection = section;
-    this.showSection(section);
-    window.location.hash = `#${section}`;
-  }
-
-  showSection(section) {
-    // Ukryj wszystkie sekcje
-    document.querySelectorAll('.section').forEach(sec => {
-      sec.classList.remove('active');
+  showSection(sectionId) {
+    // Hide all sections
+    document.querySelectorAll('.section').forEach(section => {
+      section.classList.remove('active');
     });
 
-    // Pokaż wybraną sekcję
-    const sectionEl = document.getElementById(section);
-    if (sectionEl) {
-      sectionEl.classList.add('active');
+    // Show requested section
+    const section = document.getElementById(sectionId);
+    if (section) {
+      section.classList.add('active');
       window.scrollTo(0, 0);
     }
 
-    // Aktualizuj styl nawigacji
-    this.updateNavStyle(section);
-    
-    // Inicjalizacja airdrop jeśli jest na stronie
-    if (section === 'airdrop') {
+    // Update nav styling
+    this.updateNavStyle(sectionId);
+
+    // Special handling for airdrop section
+    if (sectionId === 'airdrop') {
       this.initAirdrop();
     }
   }
 
   updateNavStyle(activeSection) {
     document.querySelectorAll('nav a').forEach(link => {
-      const href = link.getAttribute('href');
-      const linkSection = href.replace(/^#/, '');
-      
-      link.classList.toggle('active', linkSection === activeSection);
+      link.style.backgroundColor = '';
+      link.style.color = '';
     });
+
+    const activeLink = document.querySelector(
+      `nav a[href="/${activeSection === 'home' ? '' : activeSection}"]`
+    );
+    
+    if (activeLink) {
+      activeLink.style.backgroundColor = '#8a2be2';
+      activeLink.style.color = '#111';
+    }
   }
 
-  isValidPath(path) {
-    return this.validSections.includes(path);
-  }
-
-  setupEventListeners() {
-    window.addEventListener('hashchange', () => {
-      const hash = window.location.hash;
-      const section = hash ? hash.replace(/^#/, '') : 'home';
-      if (this.isValidPath(section) {
-        this.showSection(section);
-      } else {
-        this.navigateTo('home');
-      }
-    });
-  }
-
-  // ======================
-  // AIRDROP IMPLEMENTATION
-  // ======================
+  // ==================
+  // AIRDROP MANAGEMENT
+  // ==================
   initAirdrop() {
     this.resetAirdropSteps();
     
+    // Check localStorage for existing submission
     if (localStorage.getItem('airdropFormSubmitted')) {
       this.setStepState(1, 'completed');
       this.setStepState(2, 'active');
@@ -144,11 +93,13 @@ class MetaFrogApp {
       this.setStepState(1, 'active');
     }
 
+    // Initialize form
     const form = document.querySelector('.airdrop-form');
     if (form) {
       form.addEventListener('submit', (e) => this.handleAirdropForm(e));
     }
 
+    // Setup task verification
     this.setupTaskVerification();
   }
 
@@ -167,81 +118,69 @@ class MetaFrogApp {
     const step = document.querySelector(`.step-card:nth-child(${stepNumber})`);
     if (!step) return;
 
+    // Reset classes
+    step.classList.remove('completed-step', 'active-step', 'pending-step');
+
+    // Get status element
     const status = step.querySelector('.step-status');
     if (!status) return;
 
-    step.classList.remove('completed-step', 'active-step', 'pending-step');
-    status.textContent = state.toUpperCase();
-
+    // Apply new state
     switch(state) {
       case 'active':
         step.classList.add('active-step');
+        status.textContent = 'ACTIVE';
         status.style.color = '#8a2be2';
         break;
       case 'completed':
         step.classList.add('completed-step');
+        status.textContent = 'COMPLETED';
         status.style.color = '#4CAF50';
         break;
       case 'pending':
         step.classList.add('pending-step');
+        status.textContent = 'PENDING';
         status.style.color = '#777';
         break;
     }
   }
 
-  async handleAirdropForm(e) {
+  handleAirdropForm(e) {
     e.preventDefault();
 
+    // Validate required fields
     const wallet = document.getElementById('wallet').value.trim();
     const xUsername = document.getElementById('xUsername').value.trim();
     const telegram = document.getElementById('telegram').value.trim();
-    const tiktok = document.getElementById('tiktok').value.trim();
 
     if (!wallet || !xUsername || !telegram) {
       alert('Please fill all required fields');
       return;
     }
 
-    if (!this.isValidSolanaAddress(wallet)) {
-      alert('Please enter a valid Solana wallet address');
-      return;
-    }
-
-    try {
-      await push(ref(database, 'airdrops'), {
-        wallet,
-        xUsername: xUsername.startsWith('@') ? xUsername : `@${xUsername}`,
-        telegram: telegram.startsWith('@') ? telegram : `@${telegram}`,
-        tiktok: tiktok ? (tiktok.startsWith('@') ? tiktok : `@${tiktok}`) : "",
-        date: new Date().toISOString(),
-        verified: false
-      });
-
-      localStorage.setItem('airdropFormSubmitted', 'true');
-      this.setStepState(1, 'completed');
-      this.setStepState(2, 'active');
-      
-      const submitBtn = document.querySelector('.submit-btn');
-      const originalText = submitBtn.innerHTML;
-      submitBtn.innerHTML = '<i class="fas fa-check"></i> Submitted!';
-      setTimeout(() => {
-        submitBtn.innerHTML = originalText;
-      }, 3000);
-    } catch (error) {
-      console.error("Error saving data:", error);
-      alert('Error saving data. Please try again.');
-    }
-  }
-
-  isValidSolanaAddress(address) {
-    return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
+    // Save submission
+    localStorage.setItem('airdropFormSubmitted', 'true');
+    localStorage.setItem('airdropFormData', JSON.stringify({
+      wallet,
+      xUsername,
+      telegram,
+      tiktok: document.getElementById('tiktok').value.trim()
+    }));
+    
+    // Update steps
+    this.setStepState(1, 'completed');
+    this.setStepState(2, 'active');
+    
+    alert('Registration successful! You can now complete the tasks.');
   }
 
   setupTaskVerification() {
+    // Check existing verifications
     if (localStorage.getItem('dexScreenerVisited')) {
       this.markTaskVerified('dexscreener');
     }
 
+    // Setup click handlers
     document.querySelectorAll('.task-link').forEach(link => {
       link.addEventListener('click', (e) => {
         if (link.classList.contains('dexscreener-link')) {
@@ -253,7 +192,7 @@ class MetaFrogApp {
   }
 
   markTaskVerified(taskType) {
-    const taskElement = document.querySelector(`.${taskType}-link`)?.closest('.task-card');
+    const taskElement = document.querySelector(`.${taskType}-link`).closest('.task-card');
     if (taskElement) {
       const status = taskElement.querySelector('.verification-status');
       if (status) {
@@ -263,9 +202,22 @@ class MetaFrogApp {
     }
   }
 
+  // =====================
+  // COPY REFERRAL FUNCTION
+  // =====================
+  setupEventListeners() {
+    const referralButton = document.querySelector('.task-link button');
+    if (referralButton) {
+      referralButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.copyReferralLink();
+      });
+    }
+  }
+
   copyReferralLink() {
-    const referralLink = `${window.location.origin}${window.location.pathname}#airdrop?ref=user123`;
-    const button = document.querySelector('.task-link');
+    const referralLink = "https://metafrog.xyz/airdrop?ref=user123";
+    const button = document.querySelector('.task-link button');
     
     if (!button) return;
 
@@ -273,12 +225,14 @@ class MetaFrogApp {
       .then(() => {
         const originalHTML = button.innerHTML;
         button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        
         setTimeout(() => {
           button.innerHTML = originalHTML;
         }, 2000);
       })
       .catch(err => {
         console.error('Copy failed:', err);
+        // Fallback for older browsers
         const textarea = document.createElement('textarea');
         textarea.value = referralLink;
         document.body.appendChild(textarea);
@@ -295,50 +249,15 @@ class MetaFrogApp {
   }
 }
 
-// Initialize the app when DOM is loaded
+// Initialize the app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-  window.app = new MetaFrogApp();
+  const app = new MetaFrogApp();
   
-  // Make copyReferralLink available globally
-  window.copyReferralLink = () => window.app.copyReferralLink();
+  // Global functions for HTML onclick handlers
+  window.showHome = () => app.showSection('home');
+  window.showGames = () => app.showSection('games');
+  window.showAirdrop = () => app.showSection('airdrop');
+  window.showStaking = () => app.showSection('staking');
+  window.showAbout = () => app.showSection('about');
+  window.copyReferralLink = () => app.copyReferralLink();
 });
-
-// Admin Panel
-if (window.location.pathname.includes('admin.html')) {
-  onValue(ref(database, 'airdrops'), (snapshot) => {
-    const data = snapshot.val();
-    let html = "";
-    
-    if (data) {
-      for (let key in data) {
-        const entry = data[key];
-        html += `
-          <tr>
-            <td>${entry.wallet}</td>
-            <td>${entry.xUsername}</td>
-            <td>${entry.telegram}</td>
-            <td>${entry.tiktok || "-"}</td>
-            <td>${new Date(entry.date).toLocaleString()}</td>
-            <td>
-              <button onclick="verifyEntry('${key}')" class="${entry.verified ? 'verified' : ''}">
-                ${entry.verified ? '✓ Verified' : 'Verify'}
-              </button>
-            </td>
-          </tr>
-        `;
-      }
-    } else {
-      html = "<tr><td colspan='6'>No data</td></tr>";
-    }
-    
-    document.getElementById("airdropList").innerHTML = html;
-  });
-
-  window.verifyEntry = (key) => {
-    if (confirm("Verify this entry?")) {
-      update(ref(database, `airdrops/${key}`), { verified: true })
-        .then(() => alert("Verified!"))
-        .catch(error => alert("Error: " + error.message));
-    }
-  };
-}
