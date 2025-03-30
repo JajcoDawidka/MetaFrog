@@ -102,7 +102,7 @@ const MetaFrogApp = {
       timestamp: firebase.firestore.FieldValue.serverTimestamp(),
       userAgent: navigator.userAgent,
       completedTasks: [],
-      status: 'registered',
+      status: 'completed', // Zmieniamy status sekcji "Register for Airdrop"
       referralCode: this.getReferralCodeFromURL() || 'direct',
       verificationStatus: {
         twitter: false,
@@ -118,8 +118,14 @@ const MetaFrogApp = {
       await this.db.collection('airdropParticipants').doc(wallet).set(submissionData);
       
       // Aktualizacja UI
-      this.advanceToStep(2);
+      this.advanceToStep(2); // Zmieniamy na krok 2, bo zarejestrowano użytkownika
       this.showAlert('Rejestracja udana! Możesz teraz wykonać zadania.', 'success');
+      
+      // Zaktualizuj status "Complete Tasks"
+      await this.db.collection('airdropParticipants').doc(wallet).update({
+        status: 'active' // Zmieniamy status sekcji "Complete Tasks" na active
+      });
+
       this.trackConversion();
       
     } catch (error) {
