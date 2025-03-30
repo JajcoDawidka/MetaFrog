@@ -113,6 +113,7 @@ nav a:hover {
     margin-top: 0; /* Upewnij się, że nie ma dodatkowego marginesu */
 }
 
+
 .section.active {
     display: block;
 }
@@ -323,21 +324,6 @@ nav a:hover {
 /* ================== */
 /* 🎁 AIRDROP SECTION */
 /* ================== */
-.alert {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  padding: 15px;
-  border-radius: 5px;
-  color: white;
-  z-index: 1000;
-  opacity: 1;
-  transition: opacity 0.5s;
-}
-.alert.error { background: #f44336; }
-.alert.success { background: #4CAF50; }
-.alert.fade-out { opacity: 0; }
-
 #airdrop {
     padding: 40px 20px;
     max-width: 1200px;
@@ -512,46 +498,8 @@ nav a:hover {
     transition: width 0.8s ease;
 }
 
-/* Nowe style dla etapów airdropu */
-.current-step {
+.active-step {
     animation: pulse-glow 2s infinite;
-    border: 2px solid #8a2be2;
-    box-shadow: 0 0 15px rgba(138, 43, 226, 0.5);
-}
-
-.completed-step {
-    background: rgba(76, 175, 80, 0.1);
-    border: 2px solid #4CAF50;
-}
-
-.completed-step .step-number {
-    background: #4CAF50 !important;
-    border-color: #4CAF50 !important;
-}
-
-.completed-step h3 {
-    color: #4CAF50 !important;
-}
-
-.completed-step .step-status {
-    background: rgba(76, 175, 80, 0.2) !important;
-    color: #4CAF50 !important;
-}
-
-.pending-step {
-    opacity: 0.7;
-}
-
-@keyframes pulse-glow {
-    0% {
-        box-shadow: 0 0 0 0 rgba(138, 43, 226, 0.4);
-    }
-    70% {
-        box-shadow: 0 0 0 15px rgba(138, 43, 226, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(138, 43, 226, 0);
-    }
 }
 
 .airdrop-content-wrapper {
@@ -873,6 +821,12 @@ nav a:hover {
     left: 0;
     font-size: 1.2rem;
     line-height: 1;
+}
+
+@keyframes pulse-glow {
+    0% { box-shadow: 0 0 0 0 rgba(138, 43, 226, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(138, 43, 226, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(138, 43, 226, 0); }
 }
 
 .task-link {
