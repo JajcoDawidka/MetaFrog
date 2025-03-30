@@ -1,102 +1,85 @@
-document.addEventListener("DOMContentLoaded", function () {
-    // Przypisanie elementów kroków
-    const step1 = document.getElementById("step-1");
-    const step2 = document.getElementById("step-2");
-    const step3 = document.querySelector(".step-card .step-status");
+// Import Firebase modules
+import { initializeApp } from "firebase/app";
+import { getDatabase, ref, set } from "firebase/database";
 
-    // Funkcja do ustawienia aktywnego, ukończonego lub oczekującego statusu etapów
-    function updateSteps(step) {
-        if (step === 1) {
-            // Krok 1: Aktywny -> Zakończony
-            step1.classList.remove('active-step');
-            step1.classList.add('completed-step');
-            step1.querySelector('.step-status').textContent = 'COMPLETED';
+// Initialize Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyAR6Ha8baMX5EPsPVayTno0e0QBRqZrmco",
+  authDomain: "metafrog-airdrop.firebaseapp.com",
+  databaseURL: "https://metafrog-airdrop-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "metafrog-airdrop",
+  storageBucket: "metafrog-airdrop.firebasestorage.app",
+  messagingSenderId: "546707737127",
+  appId: "1:546707737127:web:67956ae63ffef3ebeddc02",
+  measurementId: "G-2Z78VYL739"
+};
 
-            // Krok 2: Zaczyna się aktywny
-            step2.classList.remove('pending-step');
-            step2.classList.add('active-step');
-            step2.querySelector('.step-status').textContent = 'ACTIVE';
-        } else if (step === 2) {
-            // Krok 2: Aktywny -> Zakończony
-            step2.classList.remove('active-step');
-            step2.classList.add('completed-step');
-            step2.querySelector('.step-status').textContent = 'COMPLETED';
+// Initialize Firebase app
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
 
-            // Krok 3: Zaczyna się oczekujący
-            step3.classList.remove('pending-step');
-            step3.classList.add('active-step');
-            step3.textContent = 'PENDING';
-        }
+// Form submit handler
+document.querySelector(".airdrop-form").addEventListener("submit", function (e) {
+    e.preventDefault(); // Prevent form from submitting normally
+
+    // Get input values
+    const walletAddress = document.getElementById("wallet").value.trim();
+    const xUsername = document.getElementById("xUsername").value.trim();
+    const telegramUsername = document.getElementById("telegram").value.trim();
+    const tiktokUsername = document.getElementById("tiktok").value.trim();
+
+    // Validate form data
+    if (!walletAddress || !xUsername || !telegramUsername) {
+        alert("Please fill in all required fields.");
+        return;
     }
 
-    // Funkcja do obsługi formularza
-    const form = document.querySelector(".airdrop-form");
-    form.addEventListener("submit", function (e) {
-        e.preventDefault(); // Zatrzymaj domyślne działanie formularza (wysyłanie danych)
+    // Get current user ID or generate one (you could use a more robust user ID system)
+    const userId = generateUserId();
 
-        // Pobranie danych z formularza
-        const wallet = document.getElementById("wallet").value;
-        const xUsername = document.getElementById("xUsername").value;
-        const telegram = document.getElementById("telegram").value;
-        const tiktok = document.getElementById("tiktok").value;
+    // Store data in Firebase
+    saveAirdropData(userId, walletAddress, xUsername, telegramUsername, tiktokUsername);
 
-        // Sprawdzenie, czy wszystkie wymagane pola zostały wypełnione
-        if (wallet && xUsername && telegram) {
-            // Jeżeli dane są poprawne, zaktualizuj status
-            updateSteps(1); // Przechodzimy do etapu 2
-
-            // Zmieniamy status na "PENDING" na etapie 3
-            setTimeout(function() {
-                updateSteps(2); // Przechodzimy do etapu 3
-            }, 2000); // Symulujemy 2 sekundy opóźnienia, które mogą być czasem oczekiwania na weryfikację
-
-            // Wyświetlamy komunikat o sukcesie
-            alert("Form submitted successfully! Airdrop registration is complete.");
-        } else {
-            // Jeżeli jakieś pole jest puste, wyświetlamy komunikat
-            alert("Please fill out all required fields.");
-        }
-    });
-
-    // Obsługa przycisku kopiowania linku referencyjnego
-    const copyReferralLinkButton = document.querySelector('.task-link');
-    copyReferralLinkButton.addEventListener('click', function (e) {
-        e.preventDefault();
-
-        const referralLink = "https://example.com/referral-link"; // Twój link referencyjny
-        navigator.clipboard.writeText(referralLink)
-            .then(() => {
-                alert("Referral link copied to clipboard!");
-            })
-            .catch(err => {
-                console.error('Error copying link: ', err);
-            });
-    });
-
-    // Funkcja do wykonywania zadań airdrop (np. kliknięcie w linki)
-    const taskLinks = document.querySelectorAll('.task-link');
-    taskLinks.forEach(link => {
-        link.addEventListener('click', function () {
-            const taskStatus = this.closest('.task-card');
-            taskStatus.classList.remove('required-task');
-            taskStatus.classList.add('completed-task');
-            this.querySelector('.task-reward').textContent = 'Reward: Completed!';
-            alert("Task completed successfully!");
-        });
-    });
+    // Show a success message (or handle UI updates)
+    alert("Airdrop registration successful! You will be notified when the tasks are completed.");
 });
 
-// Funkcja do zaktualizowania statusu zadania DexScreener
-function updateDexScreenerStatus() {
-    const dexscreenerLink = document.querySelector('.dexscreener-link');
-    const statusElement = dexscreenerLink.querySelector('.dexscreener-verification');
+// Generate a random user ID (this can be replaced with a more sophisticated approach if needed)
+function generateUserId() {
+    return "user_" + Math.floor(Math.random() * 1000000); // Example user ID generator
+}
 
-    // Po kliknięciu w link DexScreener zaktualizujemy status na "Completed"
-    dexscreenerLink.addEventListener('click', function () {
-        setTimeout(function () {
-            statusElement.textContent = 'Task Completed';
-        }, 2000); // Symulacja weryfikacji przez 2 sekundy
+// Save airdrop data to Firebase
+function saveAirdropData(userId, walletAddress, xUsername, telegramUsername, tiktokUsername) {
+    // Create a reference in Firebase
+    const airdropRef = ref(database, 'airdropParticipants/' + userId);
+
+    // Set the data
+    set(airdropRef, {
+        walletAddress: walletAddress,
+        xUsername: xUsername,
+        telegramUsername: telegramUsername,
+        tiktokUsername: tiktokUsername
+    })
+    .then(() => {
+        console.log("Airdrop data saved successfully.");
+    })
+    .catch((error) => {
+        console.error("Error saving airdrop data:", error);
     });
 }
 
-updateDexScreenerStatus();
+// Handle airdrop step status updates (optional)
+function updateAirdropStepStatus(stepNumber, status) {
+    const stepElement = document.querySelector(`.step-card:nth-child(${stepNumber})`);
+    const statusElement = stepElement.querySelector(".step-status");
+
+    // Update status text and class
+    statusElement.textContent = status;
+    statusElement.className = `step-status ${status.toLowerCase()}`;
+}
+
+// Example of updating steps dynamically
+updateAirdropStepStatus(1, "COMPLETED");
+updateAirdropStepStatus(2, "ACTIVE");
+updateAirdropStepStatus(3, "PENDING");
