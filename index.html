@@ -6,6 +6,13 @@
     <title>MetaFrog</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script>
+  if (sessionStorage.redirect) {
+    const redirect = sessionStorage.redirect;
+    delete sessionStorage.redirect;
+    window.location.href = redirect;
+  }
+</script>
 </head>
 <body>
     <!-- Nagłówek strony -->
