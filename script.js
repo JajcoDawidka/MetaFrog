@@ -1,68 +1,102 @@
 /**
- * MetaFrog - Complete Website Functionality
- * Includes:
- * - Section navigation
- * - Airdrop progress system
- * - Form validation
- * - Task verification
- * - Referral system
+ * MetaFrog - Main JavaScript File
+ * Improved version with better architecture and error handling
  */
 
-class MetaFrogApp {
-  constructor() {
-    this.init();
-  }
-
+// Main application controller
+const MetaFrogApp = {
+  // Initialize the application
   init() {
-    this.setupNavigation();
-    this.initAirdrop();
+    this.checkLocalStorage();
     this.setupEventListeners();
-    this.handleInitialSection();
-  }
+    this.handleInitialRoute();
+    this.checkVerificationStatus();
+    this.checkAirdropProgress();
+  },
 
-  // ======================
-  // NAVIGATION MANAGEMENT
-  // ======================
-  setupNavigation() {
-    document.querySelectorAll('nav a').forEach(link => {
-      link.addEventListener('click', (e) => {
+  // Check if localStorage is available
+  checkLocalStorage() {
+    try {
+      const test = '__test__';
+      localStorage.setItem(test, test);
+      localStorage.removeItem(test);
+      this.storageAvailable = true;
+    } catch (e) {
+      this.storageAvailable = false;
+      console.warn('LocalStorage is not available. Some features may be limited.');
+    }
+  },
+
+  // Setup all event listeners using event delegation
+  setupEventListeners() {
+    // Navigation links
+    document.addEventListener('click', (e) => {
+      const navLink = e.target.closest('nav a');
+      if (navLink) {
         e.preventDefault();
-        const section = link.getAttribute('href').replace('/', '') || 'home';
+        const section = this.getSectionFromHref(navLink.getAttribute('href'));
         this.showSection(section);
-        history.pushState(null, null, `/${section === 'home' ? '' : section}`);
-      });
+      }
+
+      // Copy referral link
+      if (e.target.closest('.copy-referral-btn')) {
+        this.copyReferralLink();
+      }
+
+      // DexScreener verification
+      if (e.target.closest('.dexscreener-link')) {
+        e.preventDefault();
+        this.verifyDexScreener(e);
+      }
     });
 
-    window.addEventListener('popstate', () => this.handleInitialSection());
-  }
+    // Form submission
+    const airdropForm = document.querySelector('.airdrop-form');
+    if (airdropForm) {
+      airdropForm.addEventListener('submit', (e) => this.handleAirdropForm(e));
+    }
 
-  handleInitialSection() {
-    const path = window.location.pathname.replace('/', '') || 'home';
-    this.showSection(path);
-  }
+    // Browser back/forward navigation
+    window.addEventListener('popstate', () => this.handleInitialRoute());
+  },
 
-  showSection(sectionId) {
+  // Handle initial route when page loads or on popstate
+  handleInitialRoute() {
+    const path = window.location.pathname.replace(/\/$/, '');
+    const section = path === '' ? 'home' : path.substring(1);
+    const validSections = ['home', 'games', 'airdrop', 'staking', 'about'];
+    
+    if (validSections.includes(section)) {
+      this.showSection(section);
+    } else {
+      this.showSection('home');
+    }
+  },
+
+  // Show specific section and update navigation
+  showSection(section) {
     // Hide all sections
-    document.querySelectorAll('.section').forEach(section => {
-      section.classList.remove('active');
+    document.querySelectorAll('.section').forEach(el => {
+      el.classList.remove('active');
     });
 
     // Show requested section
-    const section = document.getElementById(sectionId);
-    if (section) {
-      section.classList.add('active');
+    const sectionEl = document.getElementById(section);
+    if (sectionEl) {
+      sectionEl.classList.add('active');
       window.scrollTo(0, 0);
     }
 
-    // Update nav styling
-    this.updateNavStyle(sectionId);
+    // Update navigation style
+    this.updateNavStyle(section);
 
     // Special handling for airdrop section
-    if (sectionId === 'airdrop') {
-      this.initAirdrop();
+    if (section === 'airdrop') {
+      this.checkAirdropProgress();
     }
-  }
+  },
 
+  // Update navigation active state
   updateNavStyle(activeSection) {
     document.querySelectorAll('nav a').forEach(link => {
       link.style.backgroundColor = '';
@@ -77,187 +111,228 @@ class MetaFrogApp {
       activeLink.style.backgroundColor = '#8a2be2';
       activeLink.style.color = '#111';
     }
-  }
+  },
 
-  // ==================
-  // AIRDROP MANAGEMENT
-  // ==================
-  initAirdrop() {
-    this.resetAirdropSteps();
+  // Get section name from href
+  getSectionFromHref(href) {
+    return href === '/' ? 'home' : href.replace(/^\//, '');
+  },
+
+  // Copy referral link to clipboard
+  async copyReferralLink() {
+    const referralLink = "https://metafrog.xyz/airdrop?ref=user123";
+    const copyBtn = document.querySelector('.copy-referral-btn');
     
-    // Check localStorage for existing submission
-    if (localStorage.getItem('airdropFormSubmitted')) {
-      this.setStepState(1, 'completed');
-      this.setStepState(2, 'active');
-    } else {
-      this.setStepState(1, 'active');
-    }
+    if (!copyBtn) return;
 
-    // Initialize form
-    const form = document.querySelector('.airdrop-form');
-    if (form) {
-      form.addEventListener('submit', (e) => this.handleAirdropForm(e));
-    }
-
-    // Setup task verification
-    this.setupTaskVerification();
-  }
-
-  resetAirdropSteps() {
-    document.querySelectorAll('.step-card').forEach(step => {
-      step.classList.remove('completed-step', 'active-step', 'pending-step');
-      const status = step.querySelector('.step-status');
-      if (status) {
-        status.textContent = 'PENDING';
-        status.style.color = '#777';
+    try {
+      await navigator.clipboard.writeText(referralLink);
+      const originalHTML = copyBtn.innerHTML;
+      copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+      
+      setTimeout(() => {
+        copyBtn.innerHTML = originalHTML;
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = referralLink;
+      document.body.appendChild(textArea);
+      textArea.select();
+      
+      try {
+        document.execCommand('copy');
+        copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        setTimeout(() => {
+          copyBtn.innerHTML = originalHTML;
+        }, 2000);
+      } catch (copyErr) {
+        console.error("Fallback copy failed:", copyErr);
+      } finally {
+        document.body.removeChild(textArea);
       }
-    });
-  }
-
-  setStepState(stepNumber, state) {
-    const step = document.querySelector(`.step-card:nth-child(${stepNumber})`);
-    if (!step) return;
-
-    // Reset classes
-    step.classList.remove('completed-step', 'active-step', 'pending-step');
-
-    // Get status element
-    const status = step.querySelector('.step-status');
-    if (!status) return;
-
-    // Apply new state
-    switch(state) {
-      case 'active':
-        step.classList.add('active-step');
-        status.textContent = 'ACTIVE';
-        status.style.color = '#8a2be2';
-        break;
-      case 'completed':
-        step.classList.add('completed-step');
-        status.textContent = 'COMPLETED';
-        status.style.color = '#4CAF50';
-        break;
-      case 'pending':
-        step.classList.add('pending-step');
-        status.textContent = 'PENDING';
-        status.style.color = '#777';
-        break;
     }
-  }
+  },
 
+  // Handle airdrop form submission
   handleAirdropForm(e) {
     e.preventDefault();
-
-    // Validate required fields
+    
     const wallet = document.getElementById('wallet').value.trim();
     const xUsername = document.getElementById('xUsername').value.trim();
     const telegram = document.getElementById('telegram').value.trim();
+    const tiktok = document.getElementById('tiktok').value.trim();
 
+    // Basic validation
     if (!wallet || !xUsername || !telegram) {
       alert('Please fill all required fields');
       return;
     }
 
-    // Save submission
-    localStorage.setItem('airdropFormSubmitted', 'true');
-    localStorage.setItem('airdropFormData', JSON.stringify({
-      wallet,
-      xUsername,
-      telegram,
-      tiktok: document.getElementById('tiktok').value.trim()
-    }));
-    
-    // Update steps
-    this.setStepState(1, 'completed');
-    this.setStepState(2, 'active');
-    
-    alert('Registration successful! You can now complete the tasks.');
-  }
+    // Advance to step 2 (Complete Tasks)
+    this.advanceToStep(2);
 
-  setupTaskVerification() {
-    // Check existing verifications
-    if (localStorage.getItem('dexScreenerVisited')) {
-      this.markTaskVerified('dexscreener');
+    // Save form data
+    if (this.storageAvailable) {
+      localStorage.setItem('airdropFormSubmitted', 'true');
+      localStorage.setItem('airdropFormData', JSON.stringify({
+        wallet,
+        xUsername,
+        telegram,
+        tiktok
+      }));
     }
 
-    // Setup click handlers
-    document.querySelectorAll('.task-link').forEach(link => {
-      link.addEventListener('click', (e) => {
-        if (link.classList.contains('dexscreener-link')) {
-          localStorage.setItem('dexScreenerVisited', 'true');
-          this.markTaskVerified('dexscreener');
-        }
-      });
-    });
-  }
+    // Show success message
+    alert('Registration successful! You can now complete the tasks.');
+  },
 
-  markTaskVerified(taskType) {
-    const taskElement = document.querySelector(`.${taskType}-link`).closest('.task-card');
-    if (taskElement) {
-      const status = taskElement.querySelector('.verification-status');
-      if (status) {
-        status.textContent = "✓ Verified";
-        status.style.color = "#4CAF50";
+  // Advance to specific airdrop step
+  advanceToStep(stepNumber) {
+    const steps = document.querySelectorAll('.step-card');
+    if (!steps.length) return;
+
+    // Update all steps
+    steps.forEach((card, index) => {
+      const step = index + 1;
+      const statusElement = card.querySelector('.step-status');
+      
+      if (step < stepNumber) {
+        // Completed steps
+        card.classList.remove('current-step', 'pending-step');
+        card.classList.add('completed-step');
+        if (statusElement) {
+          statusElement.textContent = "COMPLETED";
+          statusElement.style.color = "#4CAF50";
+        }
+      } else if (step === stepNumber) {
+        // Current step
+        card.classList.remove('completed-step', 'pending-step');
+        card.classList.add('current-step');
+        if (statusElement) {
+          statusElement.textContent = "ACTIVE";
+          statusElement.style.color = "#8a2be2";
+        }
+      } else {
+        // Pending steps
+        card.classList.remove('current-step', 'completed-step');
+        card.classList.add('pending-step');
+        if (statusElement) {
+          statusElement.textContent = "PENDING";
+          statusElement.style.color = "#777";
+        }
+      }
+    });
+
+    // Update connectors
+    this.updateStepConnectors(stepNumber);
+
+    // Save current step
+    if (this.storageAvailable) {
+      localStorage.setItem('currentAirdropStep', stepNumber);
+    }
+  },
+
+  // Update visual connectors between steps
+  updateStepConnectors(currentStep) {
+    const arrows = document.querySelectorAll('.arrow');
+    arrows.forEach((arrow, index) => {
+      if (index < currentStep - 1) {
+        // Completed connections
+        arrow.style.background = 'linear-gradient(135deg, #8a2be2, #4b0082)';
+      } else {
+        // Pending connections
+        arrow.style.background = '#333';
+      }
+    });
+  },
+
+  // Verify DexScreener task
+  verifyDexScreener(event) {
+    const url = event.currentTarget.href;
+    window.open(url, '_blank');
+
+    if (this.storageAvailable) {
+      localStorage.setItem('dexScreenerVisited', 'true');
+    }
+
+    const taskContent = event.currentTarget.closest('.task-content');
+    const statusElement = taskContent?.querySelector('.verification-status');
+    
+    if (statusElement) {
+      statusElement.style.display = 'inline';
+      statusElement.textContent = "✓ Verification pending (refresh after visit)";
+      statusElement.style.color = "#FFC107";
+      
+      setTimeout(() => {
+        statusElement.textContent = "✓ Verified!";
+        statusElement.style.color = "#4CAF50";
+      }, 3000);
+    }
+  },
+
+  // Check verification status from localStorage
+  checkVerificationStatus() {
+    if (this.storageAvailable && localStorage.getItem('dexScreenerVisited')) {
+      document.querySelectorAll('.verification-status').forEach(el => {
+        el.style.display = 'inline';
+        el.textContent = "✓ Verified";
+        el.style.color = "#4CAF50";
+      });
+    }
+  },
+
+  // Check airdrop progress from localStorage
+  checkAirdropProgress() {
+    if (this.storageAvailable) {
+      // Check form submission
+      if (localStorage.getItem('airdropFormSubmitted')) {
+        this.advanceToStep(2);
+      }
+      
+      // Check current step
+      const savedStep = localStorage.getItem('currentAirdropStep');
+      if (savedStep) {
+        this.advanceToStep(parseInt(savedStep));
       }
     }
-  }
+  },
 
-  // =====================
-  // COPY REFERRAL FUNCTION
-  // =====================
-  setupEventListeners() {
-    const referralButton = document.querySelector('.task-link button');
-    if (referralButton) {
-      referralButton.addEventListener('click', (e) => {
-        e.preventDefault();
-        this.copyReferralLink();
-      });
-    }
-  }
+  // Animate counter (example)
+  animateCounter(elementId, target) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
 
-  copyReferralLink() {
-    const referralLink = "https://metafrog.xyz/airdrop?ref=user123";
-    const button = document.querySelector('.task-link button');
-    
-    if (!button) return;
+    let current = 0;
+    const increment = target / 100;
+    const duration = 2000; // 2 seconds
+    const steps = 50;
+    const stepTime = duration / steps;
 
-    navigator.clipboard.writeText(referralLink)
-      .then(() => {
-        const originalHTML = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-check"></i> Copied!';
-        
-        setTimeout(() => {
-          button.innerHTML = originalHTML;
-        }, 2000);
-      })
-      .catch(err => {
-        console.error('Copy failed:', err);
-        // Fallback for older browsers
-        const textarea = document.createElement('textarea');
-        textarea.value = referralLink;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-        
-        const originalHTML = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-check"></i> Copied!';
-        setTimeout(() => {
-          button.innerHTML = originalHTML;
-        }, 2000);
-      });
+    const timer = setInterval(() => {
+      current += increment;
+      element.textContent = Math.floor(current).toLocaleString();
+
+      if (current >= target) {
+        element.textContent = target.toLocaleString();
+        clearInterval(timer);
+      }
+    }, stepTime);
   }
-}
+};
 
 // Initialize the app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-  const app = new MetaFrogApp();
+  MetaFrogApp.init();
   
-  // Global functions for HTML onclick handlers
-  window.showHome = () => app.showSection('home');
-  window.showGames = () => app.showSection('games');
-  window.showAirdrop = () => app.showSection('airdrop');
-  window.showStaking = () => app.showSection('staking');
-  window.showAbout = () => app.showSection('about');
-  window.copyReferralLink = () => app.copyReferralLink();
+  // Example counters - you can remove or modify these
+  MetaFrogApp.animateCounter('participants-counter', 12500);
+  MetaFrogApp.animateCounter('tokens-counter', 2500000);
+});
+
+// Handle errors globally
+window.addEventListener('error', (event) => {
+  console.error('Global error:', event.error);
+  // You could add error tracking here
 });
