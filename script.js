@@ -1,6 +1,6 @@
 /**
  * MetaFrog - Complete Website Script
- * Version 4.2 - Fixed Form Submission
+ * Version 4.3 - Fixed Permissions & Enhanced Security
  */
 
 const firebaseConfig = {
@@ -10,35 +10,39 @@ const firebaseConfig = {
   storageBucket: "metafrog-airdrop.appspot.com",
   messagingSenderId: "546707737127",
   appId: "1:546707737127:web:67956ae63ffef3ebeddc02",
-  measurementId: "G-2Z78VYL739"
+  measurementId: "G-2Z78VYL739",
+  databaseURL: "https://metafrog-airdrop-default-rtdb.firebaseio.com"
 };
 
 const MetaFrogApp = {
   debugMode: false,
   isProcessing: false,
   db: null,
+  auth: null,
+  realtimeDb: null,
 
-  init() {
-    // Initialize smooth scrolling
-    document.documentElement.style.scrollBehavior = 'smooth';
-    
-    // Initialize Firebase
+  async init() {
     try {
       firebase.initializeApp(firebaseConfig);
       this.db = firebase.firestore();
+      this.auth = firebase.auth();
+      this.realtimeDb = firebase.database();
       console.log('Firebase initialized successfully');
-    } catch (error) {
-      console.error('Firebase initialization error:', error);
-      this.showAlert('⚠️ Connection error - using fallback mode', 'warning');
-    }
 
-    this.setupEventListeners();
-    this.handleInitialRoute();
-    this.setupFormValidation();
-    this.setupUsernameFormatting();
-    this.checkVerificationStatus();
-    this.initializeAirdropSteps();
-    this.scrollToTop(true);
+      await this.auth.signInAnonymously();
+      
+      this.setupEventListeners();
+      this.handleInitialRoute();
+      this.setupFormValidation();
+      this.setupUsernameFormatting();
+      this.checkVerificationStatus();
+      this.initializeAirdropSteps();
+      this.scrollToTop(true);
+
+    } catch (error) {
+      console.error('Initialization error:', error);
+      this.showAlert('⚠️ System initialization error', 'warning');
+    }
   },
 
   scrollToTop(force = false) {
@@ -57,7 +61,6 @@ const MetaFrogApp = {
   },
 
   setupEventListeners() {
-    // Improved navigation handling
     document.querySelectorAll('nav a').forEach(link => {
       link.addEventListener('click', (e) => {
         e.preventDefault();
@@ -67,7 +70,6 @@ const MetaFrogApp = {
       });
     });
 
-    // Form submission
     const form = document.querySelector('.airdrop-form');
     if (form) {
       form.addEventListener('submit', (e) => {
@@ -76,12 +78,10 @@ const MetaFrogApp = {
       });
     }
 
-    // Handle browser back/forward
     window.addEventListener('popstate', () => {
       this.handleInitialRoute();
     });
 
-    // Copy referral link button
     const copyBtn = document.querySelector('.task-link[onclick*="copyReferralLink"]');
     if (copyBtn) {
       copyBtn.addEventListener('click', (e) => {
@@ -119,17 +119,14 @@ const MetaFrogApp = {
   },
 
   showSection(sectionId) {
-    // Hide all sections
     document.querySelectorAll('.section').forEach(section => {
       section.classList.remove('active');
     });
 
-    // Show selected section
     const section = document.getElementById(sectionId);
     if (section) {
       section.classList.add('active');
       
-      // Update URL without page reload
       if (window.location.hash !== `#${sectionId}`) {
         history.pushState(null, null, `#${sectionId}`);
       }
@@ -153,7 +150,6 @@ const MetaFrogApp = {
       const telegram = document.getElementById('telegram').value.trim();
       const tiktok = document.getElementById('tiktok').value.trim();
 
-      // Validation
       if (!wallet || !xUsername || !telegram) {
         throw new Error('Please fill all required fields');
       }
@@ -167,42 +163,40 @@ const MetaFrogApp = {
         xUsername: xUsername.startsWith('@') ? xUsername : `@${xUsername}`,
         telegram: telegram.startsWith('@') ? telegram : `@${telegram}`,
         tiktok: tiktok ? (tiktok.startsWith('@') ? tiktok : `@${tiktok}`) : 'N/A',
-        timestamp: new Date().toISOString(),
-        completedTasks: [],
-        status: 'registered',
-        verificationStatus: {
-          twitter: false,
-          telegram: false,
-          tiktok: false,
-          dexscreener: false
-        }
+        status: 'pending',
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        ip: await this.getIP()
       };
 
-      // Debug mode - simulate submission
-      if (this.debugMode) {
-        console.log('Debug mode - submission data:', submissionData);
-        await new Promise(resolve => setTimeout(resolve, 1500));
-      } 
-      // Production mode - save to Firebase
-      else if (this.db) {
-        await this.db.collection('airdropParticipants').doc(wallet).set(submissionData);
-      } else {
-        throw new Error('Database connection error');
-      }
+      await this.db.collection('airdropParticipants').doc(wallet).set(submissionData);
+      await this.realtimeDb.ref(`airdropSubmissions/${wallet.replace(/\./g, '_')}`).set(submissionData);
 
-      // Update UI after success
       this.updateStepStatus(1, 'completed');
       this.updateStepStatus(2, 'active');
       this.updateStepStatus(3, 'pending');
       this.showAlert('✅ Registration successful!', 'success');
       localStorage.setItem('mfrog_registered', 'true');
-      
+
     } catch (error) {
       console.error('Submission error:', error);
-      this.showAlert(`❌ ${error.message}`, 'error');
+      let message = error.message;
+      if (error.code === 'permission-denied') {
+        message = 'Database permission denied. Please contact support.';
+      }
+      this.showAlert(`❌ ${message}`, 'error');
     } finally {
       this.isProcessing = false;
       this.toggleSubmitButton(false);
+    }
+  },
+
+  async getIP() {
+    try {
+      const response = await fetch('https://api.ipify.org?format=json');
+      const data = await response.json();
+      return data.ip || 'unknown';
+    } catch {
+      return 'unknown';
     }
   },
 
@@ -248,7 +242,6 @@ const MetaFrogApp = {
   },
 
   showAlert(message, type = 'error') {
-    // Remove existing alerts first
     document.querySelectorAll('.mfrog-alert').forEach(alert => alert.remove());
     
     const alert = document.createElement('div');
@@ -310,7 +303,6 @@ const MetaFrogApp = {
            /^[A-HJ-NP-Za-km-z1-9]*$/.test(address);
   },
 
-  // Admin function to view submissions
   async viewSubmissions() {
     try {
       if (!this.db) {
@@ -334,12 +326,10 @@ const MetaFrogApp = {
   }
 };
 
-// Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
   MetaFrogApp.init();
 });
 
-// Add alert styles
 const style = document.createElement('style');
 style.textContent = `
   .mfrog-alert {
@@ -387,7 +377,6 @@ style.textContent = `
     to { opacity: 0; transform: translateX(200%); }
   }
 
-  /* Completed step styling */
   .completed-step {
     border-color: #4CAF50 !important;
     background: linear-gradient(135deg, #1a1a1a, #0a2e0a) !important;
@@ -405,6 +394,25 @@ style.textContent = `
   .completed-step .step-status {
     background: rgba(76, 175, 80, 0.2) !important;
     color: #4CAF50 !important;
+  }
+
+  .step-connector::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 33%;
+    background: linear-gradient(90deg, #8a2be2, #4b0082);
+    transition: width 0.8s ease;
+  }
+
+  .completed-step ~ .step-connector::after {
+    width: 66%;
+  }
+
+  .completed-step.completed-step ~ .step-connector::after {
+    width: 100%;
   }
 `;
 document.head.appendChild(style);
