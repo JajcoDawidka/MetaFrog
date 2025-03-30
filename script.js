@@ -21,8 +21,8 @@ class MetaFrogApp {
 
   async init() {
     firebase.initializeApp(this.firebaseConfig);
-    this.db = firebase.firestore();
-    
+    this.db = firebase.database();
+
     this.setupNavigation();
     this.initAirdrop();
     this.setupEventListeners();
@@ -75,15 +75,15 @@ class MetaFrogApp {
       telegram: document.getElementById('telegram').value.trim(),
       tiktok: document.getElementById('tiktok').value.trim() || 'Not provided',
       timestamp: new Date().toISOString(),
-      status: 'registered'
+      verified: false // Dodajemy, że zgłoszenie nie jest jeszcze zweryfikowane
     };
 
     if (!this.validateForm(formData)) return;
 
     try {
-      await this.db.collection("airdrop_submissions").add(formData);
+      const newSubmissionRef = this.db.ref('airdrops').push();
+      await newSubmissionRef.set(formData);
       this.updateUIAfterSubmission();
-      this.saveSubmissionToLocalStorage();
     } catch (error) {
       console.error("Submission error:", error);
       alert('Error submitting form. Please try again.');
@@ -114,19 +114,6 @@ class MetaFrogApp {
     document.getElementById('status2').textContent = 'ACTIVE';
     
     alert('Registration successful! Complete tasks to qualify.');
-  }
-
-  saveSubmissionToLocalStorage() {
-    localStorage.setItem('mfrogAirdropSubmitted', 'true');
-  }
-
-  checkSubmissionStatus() {
-    if (localStorage.getItem('mfrogAirdropSubmitted') === 'true') {
-      this.updateUIAfterSubmission();
-    } else {
-      document.getElementById('step1').classList.add('active-step');
-      document.getElementById('status1').textContent = 'ACTIVE';
-    }
   }
 
   // =====================
@@ -181,6 +168,36 @@ class MetaFrogApp {
     const id = 'mfrog-' + Math.random().toString(36).substr(2, 9);
     localStorage.setItem('mfrogReferralId', id);
     return id;
+  }
+
+  // ======================
+  // UI CONTROL (Steps Status)
+  // ======================
+
+  updateStepStatus(step, status) {
+    document.getElementById(`status${step}`).textContent = status;
+    const stepCard = document.getElementById(`step${step}`);
+    if (status === "ACTIVE") {
+        stepCard.classList.add('active-step');
+        stepCard.classList.remove('completed-step', 'pending-step');
+    } else if (status === "COMPLETED") {
+        stepCard.classList.add('completed-step');
+        stepCard.classList.remove('active-step', 'pending-step');
+    } else if (status === "PENDING") {
+        stepCard.classList.add('pending-step');
+        stepCard.classList.remove('active-step', 'completed-step');
+    }
+  }
+
+  // Inicjalizacja statusów przy starcie
+  checkSubmissionStatus() {
+    if (localStorage.getItem('mfrogAirdropSubmitted') === 'true') {
+      this.updateUIAfterSubmission();
+    } else {
+      this.updateStepStatus(1, "ACTIVE");
+      this.updateStepStatus(2, "PENDING");
+      this.updateStepStatus(3, "PENDING");
+    }
   }
 }
 
