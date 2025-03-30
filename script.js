@@ -28,6 +28,7 @@ signInAnonymously(auth).catch(error => {
 class MetaFrogApp {
   constructor() {
     this.validSections = ['home', 'games', 'airdrop', 'staking', 'about'];
+    this.currentSection = 'home';
     this.init();
   }
 
@@ -68,18 +69,19 @@ class MetaFrogApp {
   handleInitialSection() {
     const hash = window.location.hash;
     const section = hash ? hash.replace(/^#/, '') : 'home';
-    this.showSection(this.isValidPath(section) ? section : 'home');
+    this.navigateTo(this.isValidPath(section) ? section : 'home');
   }
 
   navigateTo(section) {
     if (!this.isValidPath(section)) {
-      window.location.hash = '';
+      window.location.hash = '#home';
       this.showSection('home');
       return;
     }
     
+    this.currentSection = section;
     this.showSection(section);
-    window.location.hash = section;
+    window.location.hash = `#${section}`;
   }
 
   showSection(section) {
@@ -109,13 +111,7 @@ class MetaFrogApp {
       const href = link.getAttribute('href');
       const linkSection = href.replace(/^#/, '');
       
-      if (linkSection === activeSection) {
-        link.style.backgroundColor = '#8a2be2';
-        link.style.color = '#111';
-      } else {
-        link.style.backgroundColor = '';
-        link.style.color = '';
-      }
+      link.classList.toggle('active', linkSection === activeSection);
     });
   }
 
@@ -125,7 +121,13 @@ class MetaFrogApp {
 
   setupEventListeners() {
     window.addEventListener('hashchange', () => {
-      this.handleInitialSection();
+      const hash = window.location.hash;
+      const section = hash ? hash.replace(/^#/, '') : 'home';
+      if (this.isValidPath(section) {
+        this.showSection(section);
+      } else {
+        this.navigateTo('home');
+      }
     });
   }
 
@@ -200,7 +202,6 @@ class MetaFrogApp {
       return;
     }
 
-    // Basic Solana address validation
     if (!this.isValidSolanaAddress(wallet)) {
       alert('Please enter a valid Solana wallet address');
       return;
@@ -220,7 +221,6 @@ class MetaFrogApp {
       this.setStepState(1, 'completed');
       this.setStepState(2, 'active');
       
-      // Show success message
       const submitBtn = document.querySelector('.submit-btn');
       const originalText = submitBtn.innerHTML;
       submitBtn.innerHTML = '<i class="fas fa-check"></i> Submitted!';
@@ -264,7 +264,7 @@ class MetaFrogApp {
   }
 
   copyReferralLink() {
-    const referralLink = "https://metafrog.xyz/#airdrop?ref=user123";
+    const referralLink = `${window.location.origin}${window.location.pathname}#airdrop?ref=user123`;
     const button = document.querySelector('.task-link');
     
     if (!button) return;
@@ -295,11 +295,11 @@ class MetaFrogApp {
   }
 }
 
-// Initialize the app
+// Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
   window.app = new MetaFrogApp();
   
-  // Global functions
+  // Make copyReferralLink available globally
   window.copyReferralLink = () => window.app.copyReferralLink();
 });
 
