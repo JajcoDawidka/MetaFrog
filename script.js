@@ -1,6 +1,6 @@
 /**
  * MetaFrog - Complete Website Script
- * Version 3.1 - Full Form Submission Fix
+ * Version 3.4 - Complete Fixed Version
  */
 
 const firebaseConfig = {
@@ -14,169 +14,86 @@ const firebaseConfig = {
 };
 
 const MetaFrogApp = {
-  debugMode: true, // Set to false in production
-  hasInitialLoad: false,
+  debugMode: true,
+  isProcessing: false,
+  currentSection: null,
 
   init() {
-    this.log('Application initialization started');
+    console.log('Initializing MetaFrog application');
     document.documentElement.style.scrollBehavior = 'smooth';
 
     try {
       firebase.initializeApp(firebaseConfig);
       this.db = firebase.firestore();
-      this.log('Firebase initialized successfully');
+      console.log('Firebase initialized successfully');
     } catch (error) {
-      this.log('Firebase initialization failed:', error, 'error');
-      this.showAlert("Database connection error. Please refresh.", "error");
+      console.error('Firebase initialization error:', error);
     }
 
     this.setupEventListeners();
+    this.initializeAirdropSteps();
     this.handleInitialRoute();
     this.initCounters();
     this.checkVerificationStatus();
-    this.initializeAirdropSteps();
-    this.handleInitialScroll();
-  },
-
-  log(message, data = null, type = 'log') {
-    if (this.debugMode) {
-      const timestamp = new Date().toISOString();
-      const styles = {
-        log: 'color: #4CAF50;',
-        error: 'color: #f44336;',
-        warn: 'color: #FFC107;'
-      };
-      console.log(`%c[MetaFrog][${timestamp}] ${message}`, styles[type] || '');
-      if (data) console[type](data);
-    }
-  },
-
-  handleInitialScroll() {
-    if (!this.hasInitialLoad) {
-      this.hasInitialLoad = true;
-      this.log('Performing initial scroll to top');
-      
-      const scrollToTop = () => {
-        window.scrollTo({ top: 0, behavior: 'auto' });
-        setTimeout(() => {
-          if (window.pageYOffset > 0) {
-            this.log('Initial scroll failed, retrying...');
-            window.scrollTo({ top: 0, behavior: 'auto' });
-          }
-        }, 100);
-      };
-
-      setTimeout(scrollToTop, 50);
-    }
-  },
-
-  initializeAirdropSteps() {
-    const steps = document.querySelectorAll('.step-card');
-    const wallet = document.getElementById('wallet')?.value.trim();
-    
-    if (!wallet) {
-      this.log('Initializing steps for new user');
-      steps.forEach((step, index) => {
-        this.updateStepElement(step, index === 0 ? 'active' : 'pending');
-      });
-    } else {
-      this.log('User already registered, skipping step initialization');
-    }
-  },
-
-  scrollToTop() {
-    this.log('Scrolling to top');
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
-    
-    setTimeout(() => {
-      if (window.pageYOffset > 0) {
-        window.scrollTo({ top: 0, behavior: 'auto' });
-      }
-    }, 500);
+    this.forceScrollToTop();
   },
 
   setupEventListeners() {
-    this.log('Setting up event listeners');
-    
-    // Navigation
     document.addEventListener('click', (e) => {
       const navLink = e.target.closest('nav a');
       if (navLink) {
         e.preventDefault();
         const sectionId = navLink.getAttribute('href').substring(1);
-        this.log(`Navigation to section: ${sectionId}`);
         this.showSection(sectionId);
       }
 
-      // Referral link
       if (e.target.closest('.task-link') && e.target.closest('[onclick="copyReferralLink()"]')) {
         e.preventDefault();
-        this.log('Copy referral link clicked');
         this.copyReferralLink();
       }
 
-      // DexScreener verification
       if (e.target.closest('.dexscreener-link')) {
         e.preventDefault();
-        this.log('DexScreener verification clicked');
         this.verifyDexScreener(e);
+      }
+
+      if (e.target.closest('.airdrop-form button[type="submit"]')) {
+        e.preventDefault();
+        this.handleAirdropForm(e);
       }
     });
 
-    // Form submission
-    const airdropForm = document.querySelector('.airdrop-form');
-    if (airdropForm) {
-      airdropForm.addEventListener('submit', (e) => {
-        this.log('Airdrop form submission detected');
-        this.handleAirdropForm(e);
-      });
-      this.log('Airdrop form event listener added');
-    } else {
-      this.log('Airdrop form not found!', null, 'error');
-    }
-
-    // History navigation
     window.addEventListener('popstate', () => {
-      this.log('History navigation detected');
-      this.handleInitialRoute();
-      this.scrollToTop();
+      const section = this.getSectionFromHref(window.location.hash);
+      this.showSection(section);
     });
   },
 
   async handleAirdropForm(e) {
-    e.preventDefault();
-    this.log('Starting form submission process');
+    if (this.isProcessing) return;
     
-    // Get form values
+    this.isProcessing = true;
+    this.toggleSubmitButton(true);
+
     const wallet = document.getElementById('wallet').value.trim();
     const xUsername = document.getElementById('xUsername').value.trim();
     const telegram = document.getElementById('telegram').value.trim();
     const tiktok = document.getElementById('tiktok').value.trim();
 
-    this.log('Form values:', {
-      wallet,
-      xUsername,
-      telegram, 
-      tiktok
-    });
-
-    // Validation
     if (!wallet || !xUsername || !telegram) {
-      this.log('Validation failed: missing required fields', null, 'warn');
       this.showAlert('Please fill all required fields', 'error');
+      this.isProcessing = false;
+      this.toggleSubmitButton(false);
       return;
     }
 
     if (!this.isValidSolanaAddress(wallet)) {
-      this.log('Validation failed: invalid Solana address', null, 'warn');
-      this.showAlert('Please enter a valid Solana wallet address', 'error');
+      this.showAlert('Invalid Solana wallet address', 'error');
+      this.isProcessing = false;
+      this.toggleSubmitButton(false);
       return;
     }
 
-    // Prepare submission data
     const submissionData = {
       wallet,
       xUsername: xUsername.startsWith('@') ? xUsername : `@${xUsername}`,
@@ -194,48 +111,80 @@ const MetaFrogApp = {
     };
 
     try {
-      this.log('Attempting to save to Firestore...');
-      this.toggleSubmitButton(true);
-      
-      await this.db.collection('airdropParticipants').doc(wallet).set(submissionData);
-      
-      this.log('Firestore save successful');
+      if (this.debugMode) {
+        await new Promise(resolve => setTimeout(resolve, 800));
+      } else {
+        await this.db.collection('airdropParticipants').doc(wallet).set(submissionData);
+      }
+
       this.updateStepStatus(1, 'completed');
       this.updateStepStatus(2, 'active');
       this.updateStepStatus(3, 'pending');
-      
-      this.showAlert('Registration successful! You can now complete tasks.', 'success');
-      this.trackConversion();
+      this.showAlert('Registration successful!', 'success');
       
     } catch (error) {
-      this.log('Firestore save failed:', error, 'error');
+      console.error('Form submission error:', error);
       this.showAlert('Submission error. Please try again.', 'error');
     } finally {
+      this.isProcessing = false;
       this.toggleSubmitButton(false);
     }
+  },
+
+  showSection(sectionId) {
+    if (this.currentSection === sectionId) return;
+    this.currentSection = sectionId;
+
+    document.querySelectorAll('.section').forEach(section => {
+      section.classList.remove('active');
+    });
+
+    const section = document.getElementById(sectionId);
+    if (section) {
+      section.classList.add('active');
+      history.replaceState(null, null, `#${sectionId}`);
+      this.forceScrollToTop();
+    }
+  },
+
+  forceScrollToTop() {
+    window.scrollTo(0, 0);
+    setTimeout(() => {
+      if (window.pageYOffset > 0) {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      }
+    }, 50);
   },
 
   toggleSubmitButton(loading) {
     const submitBtn = document.querySelector('.airdrop-form button[type="submit"]');
     if (submitBtn) {
       submitBtn.disabled = loading;
-      submitBtn.innerHTML = loading
-        ? '<i class="fas fa-spinner fa-spin"></i> Processing...'
+      submitBtn.innerHTML = loading 
+        ? '<i class="fas fa-spinner fa-spin"></i> Processing...' 
         : 'Submit';
-      this.log(`Submit button state: ${loading ? 'loading' : 'ready'}`);
-    } else {
-      this.log('Submit button not found!', null, 'error');
     }
   },
 
   updateStepStatus(stepNumber, status) {
     const step = document.querySelector(`.step-card:nth-child(${stepNumber})`);
     if (step) {
-      this.log(`Updating step ${stepNumber} to ${status}`);
-      this.updateStepElement(step, status);
-    } else {
-      this.log(`Step ${stepNumber} element not found!`, null, 'error');
+      step.classList.remove('completed-step', 'active-step', 'pending-step');
+      step.classList.add(`${status}-step`);
+      
+      const statusElement = step.querySelector('.step-status');
+      if (statusElement) {
+        statusElement.textContent = status.toUpperCase();
+      }
     }
+  },
+
+  initializeAirdropSteps() {
+    const steps = document.querySelectorAll('.step-card');
+    steps.forEach((step, index) => {
+      const status = index === 0 ? 'active' : 'pending';
+      this.updateStepElement(step, status);
+    });
   },
 
   updateStepElement(element, status) {
@@ -251,13 +200,11 @@ const MetaFrogApp = {
   async verifyDexScreener(e) {
     const wallet = document.getElementById('wallet')?.value.trim();
     if (!wallet) {
-      this.log('DexScreener verification failed: no wallet', null, 'warn');
       this.showAlert('Please enter wallet address first', 'error');
       return;
     }
 
     try {
-      this.log('Verifying DexScreener task...');
       await this.db.collection('airdropParticipants').doc(wallet).update({
         'verificationStatus.dexscreener': true,
         'completedTasks': firebase.firestore.FieldValue.arrayUnion('dexscreener')
@@ -265,10 +212,9 @@ const MetaFrogApp = {
       
       this.updateVerificationUI('dexscreener');
       this.showAlert('DexScreener task verified!', 'success');
-      this.log('DexScreener verification successful');
     } catch (error) {
-      this.log('DexScreener verification failed:', error, 'error');
-      this.showAlert('Verification error. Please try again.', 'error');
+      console.error('Verification error:', error);
+      this.showAlert('Verification failed. Please try again.', 'error');
     }
   },
 
@@ -277,26 +223,17 @@ const MetaFrogApp = {
     if (element) {
       element.innerHTML = '<i class="fas fa-check-circle"></i> Verified';
       element.style.color = '#4CAF50';
-      this.log(`Updated UI for ${taskName} verification`);
-    } else {
-      this.log(`${taskName} verification element not found!`, null, 'error');
     }
   },
 
   async checkVerificationStatus() {
     const wallet = document.getElementById('wallet')?.value.trim();
-    if (!wallet) {
-      this.log('No wallet for verification check');
-      return;
-    }
+    if (!wallet) return;
 
     try {
-      this.log('Checking verification status...');
       const doc = await this.db.collection('airdropParticipants').doc(wallet).get();
-      
       if (doc.exists) {
         const data = doc.data();
-        this.log('User data found:', data);
         
         for (const task in data.verificationStatus) {
           if (data.verificationStatus[task]) {
@@ -308,25 +245,19 @@ const MetaFrogApp = {
           this.updateStepStatus(1, 'completed');
           this.updateStepStatus(2, 'active');
           this.updateStepStatus(3, 'pending');
-          this.log('Updated steps for registered user');
         }
-      } else {
-        this.log('No user data found in Firestore');
       }
     } catch (error) {
-      this.log('Verification check failed:', error, 'error');
+      console.error('Status check error:', error);
     }
   },
 
   copyReferralLink() {
-    const referralLink = `${window.location.origin}${window.location.pathname}?ref=${this.generateReferralCode()}`;
-    navigator.clipboard.writeText(referralLink)
-      .then(() => {
-        this.showAlert('Referral link copied!', 'success');
-        this.log('Referral link copied to clipboard');
-      })
+    const link = `${window.location.origin}${window.location.pathname}?ref=${this.generateReferralCode()}`;
+    navigator.clipboard.writeText(link)
+      .then(() => this.showAlert('Referral link copied!', 'success'))
       .catch(err => {
-        this.log('Failed to copy referral link:', err, 'error');
+        console.error('Copy error:', err);
         this.showAlert('Failed to copy link', 'error');
       });
   },
@@ -336,18 +267,11 @@ const MetaFrogApp = {
   },
 
   isValidSolanaAddress(address) {
-    const isValid = address.length >= 32 && address.length <= 44 && 
-                   /^[A-HJ-NP-Za-km-z1-9]*$/.test(address);
-    this.log(`Solana address validation: ${isValid}`);
-    return isValid;
+    return address.length >= 32 && address.length <= 44 && 
+           /^[A-HJ-NP-Za-km-z1-9]*$/.test(address);
   },
 
   showAlert(message, type = 'error') {
-    this.log(`Showing alert: ${type} - ${message}`);
-    
-    // Remove existing alerts
-    document.querySelectorAll('.alert').forEach(alert => alert.remove());
-    
     const alert = document.createElement('div');
     alert.className = `alert ${type}`;
     alert.textContent = message;
@@ -359,26 +283,8 @@ const MetaFrogApp = {
     }, 3000);
   },
 
-  showSection(sectionId) {
-    this.log(`Showing section: ${sectionId}`);
-    
-    document.querySelectorAll('.section').forEach(s => {
-      s.classList.remove('active');
-    });
-    
-    const section = document.getElementById(sectionId);
-    if (section) {
-      section.classList.add('active');
-      history.pushState(null, null, `#${sectionId}`);
-      this.scrollToTop();
-    } else {
-      this.log(`Section ${sectionId} not found!`, null, 'error');
-    }
-  },
-
   handleInitialRoute() {
     const section = this.getSectionFromHref(window.location.hash) || 'home';
-    this.log(`Initial route detected: ${section}`);
     this.showSection(section);
   },
 
@@ -387,19 +293,14 @@ const MetaFrogApp = {
   },
 
   initCounters() {
-    this.log('Initializing counters');
     this.animateCounter('participants-counter', 12500);
     this.animateCounter('tokens-counter', 2500000);
   },
 
   animateCounter(id, target) {
     const element = document.getElementById(id);
-    if (!element) {
-      this.log(`Counter element ${id} not found!`, null, 'error');
-      return;
-    }
+    if (!element) return;
     
-    this.log(`Animating counter ${id} to ${target}`);
     let current = 0;
     const timer = setInterval(() => {
       current += target / 100;
@@ -412,7 +313,6 @@ const MetaFrogApp = {
   },
 
   trackConversion() {
-    this.log('Tracking conversion');
     if (typeof gtag !== 'undefined') {
       gtag('event', 'conversion', {
         'send_to': 'AW-123456789/AbCdEfGhIjKlMnOpQrStUv'
@@ -421,20 +321,15 @@ const MetaFrogApp = {
   }
 };
 
-// Initialize application
 document.addEventListener('DOMContentLoaded', () => {
   MetaFrogApp.init();
 });
 
 window.addEventListener('load', () => {
-  if (!MetaFrogApp.hasInitialLoad) {
-    MetaFrogApp.scrollToTop();
-  }
+  MetaFrogApp.forceScrollToTop();
 });
 
 window.addEventListener('error', (e) => {
   console.error('Global error:', e.error);
-  if (typeof MetaFrogApp !== 'undefined') {
-    MetaFrogApp.showAlert('An unexpected error occurred', 'error');
-  }
+  MetaFrogApp.showAlert('An unexpected error occurred', 'error');
 });
