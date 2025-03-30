@@ -1,6 +1,6 @@
 /**
  * MetaFrog - Complete Website Script
- * Version 4.6 - Full Integration
+ * Version 4.6.1 - Fixed Form Submission
  */
 
 const firebaseConfig = {
@@ -15,7 +15,7 @@ const firebaseConfig = {
 };
 
 const MetaFrogApp = {
-  debugMode: false,
+  debugMode: true, // Włączamy debugowanie
   isProcessing: false,
   db: null,
   auth: null,
@@ -23,23 +23,20 @@ const MetaFrogApp = {
 
   async initializeFirebase() {
     try {
-      // Dynamiczne ładowanie brakujących bibliotek
       if (typeof firebase === 'undefined') {
         await this.loadFirebaseDependencies();
       }
 
-      // Inicjalizacja Firebase
       const app = firebase.initializeApp(firebaseConfig);
       this.db = app.firestore();
       this.auth = app.auth();
       this.realtimeDb = app.database();
 
-      // Logowanie anonimowe
       await this.auth.signInAnonymously();
-      console.log('Firebase initialized successfully');
+      console.log('[DEBUG] Firebase initialized successfully');
       return true;
     } catch (error) {
-      console.error('Firebase initialization failed:', error);
+      console.error('[ERROR] Firebase initialization failed:', error);
       return false;
     }
   },
@@ -57,14 +54,11 @@ const MetaFrogApp = {
 
   async init() {
     try {
-      // Inicjalizacja Firebase
       const firebaseReady = await this.initializeFirebase();
       
-      // Podstawowe funkcje UI
       this.setupNavigation();
       this.scrollToTop(true);
       
-      // Funkcje zależne od Firebase
       if (firebaseReady) {
         this.setupAirdropForm();
         this.setupFormValidation();
@@ -76,7 +70,7 @@ const MetaFrogApp = {
       }
 
     } catch (error) {
-      console.error('App initialization failed:', error);
+      console.error('[ERROR] App initialization failed:', error);
       this.showEmergencyMode();
     }
   },
@@ -129,11 +123,27 @@ const MetaFrogApp = {
   },
 
   async handleAirdropForm(e) {
-    if (this.isProcessing) return;
+    if (this.isProcessing) {
+      console.log('[DEBUG] Form submission already in progress');
+      return;
+    }
+    
+    const submitBtn = document.querySelector('.airdrop-form button[type="submit"]');
+    if (!submitBtn) {
+      console.error('[ERROR] Submit button not found');
+      return;
+    }
+    
+    // Ustawienie stanu ładowania
     this.isProcessing = true;
-    this.toggleSubmitButton(true);
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    submitBtn.style.opacity = '0.7';
+    submitBtn.style.cursor = 'not-allowed';
 
     try {
+      console.log('[DEBUG] Starting form submission');
+      
       const wallet = document.getElementById('wallet').value.trim();
       const xUsername = document.getElementById('xUsername').value.trim();
       const telegram = document.getElementById('telegram').value.trim();
@@ -158,39 +168,48 @@ const MetaFrogApp = {
         ip: await this.getIP()
       };
 
-      // Zapis do Firestore i Realtime Database
-      await Promise.all([
-        this.db.collection('airdropParticipants').doc(wallet).set(submissionData),
-        this.realtimeDb.ref(`airdropSubmissions/${wallet.replace(/\./g, '_')}`).set(submissionData)
-      ]);
+      console.log('[DEBUG] Submission data:', submissionData);
 
-      // Aktualizacja UI - POPRAWIONE
+      // Zapis do Firebase
+      console.log('[DEBUG] Writing to Firestore...');
+      await this.db.collection('airdropParticipants').doc(wallet).set(submissionData);
+      
+      console.log('[DEBUG] Writing to Realtime DB...');
+      await this.realtimeDb.ref(`airdropSubmissions/${wallet.replace(/\./g, '_')}`).set(submissionData);
+
+      // Aktualizacja UI
+      console.log('[DEBUG] Updating steps...');
       this.updateStepStatus(1, 'completed');
       this.updateStepStatus(2, 'active');
       this.updateStepStatus(3, 'pending');
       
-      // Wyświetlenie komunikatu sukcesu
       this.showAlert('✅ Registration successful! Please complete the next steps.', 'success');
       localStorage.setItem('mfrog_registered', 'true');
 
-      // Reset formularza
-      e.target.reset();
+      console.log('[DEBUG] Form submission completed successfully');
 
     } catch (error) {
-      console.error('Submission error:', error);
+      console.error('[ERROR] Submission failed:', error);
+      
       let message = error.message;
       if (error.code === 'permission-denied') {
         message = 'Database permissions issue. Please refresh the page.';
       }
-      this.showAlert(`❌ ${message}`, 'error');
       
-      // Przywrócenie poprzedniego stanu kroków w przypadku błędu
+      this.showAlert(`❌ ${message}`, 'error');
       this.updateStepStatus(1, 'active');
       this.updateStepStatus(2, 'pending');
       this.updateStepStatus(3, 'pending');
     } finally {
+      console.log('[DEBUG] Resetting form state');
       this.isProcessing = false;
-      this.toggleSubmitButton(false);
+      
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Submit & Continue';
+        submitBtn.style.opacity = '1';
+        submitBtn.style.cursor = 'pointer';
+      }
     }
   },
 
@@ -203,9 +222,12 @@ const MetaFrogApp = {
   },
 
   updateStepStatus(stepNumber, status) {
+    console.log(`[DEBUG] Updating step ${stepNumber} to ${status}`);
     const step = document.querySelector(`.step-card:nth-child(${stepNumber})`);
     if (step) {
       this.updateStepElement(step, status);
+    } else {
+      console.error(`[ERROR] Step ${stepNumber} not found`);
     }
   },
 
@@ -230,7 +252,7 @@ const MetaFrogApp = {
             localStorage.setItem('mfrog_registered', 'true');
           }
         })
-        .catch(error => console.error('Status check error:', error));
+        .catch(error => console.error('[ERROR] Status check failed:', error));
     }
   },
 
@@ -253,6 +275,7 @@ const MetaFrogApp = {
   },
 
   showAlert(message, type = 'error') {
+    console.log(`[UI] Showing alert: ${message}`);
     const alert = document.createElement('div');
     alert.className = `mfrog-alert ${type}`;
     alert.innerHTML = `<div class="mfrog-alert-content">${message}</div>`;
@@ -262,25 +285,6 @@ const MetaFrogApp = {
       alert.classList.add('fade-out');
       setTimeout(() => alert.remove(), 500);
     }, 5000);
-  },
-
-  toggleSubmitButton(loading) {
-    const submitBtn = document.querySelector('.airdrop-form button[type="submit"]');
-    if (submitBtn) {
-      submitBtn.disabled = loading;
-      submitBtn.innerHTML = loading 
-        ? '<i class="fas fa-spinner fa-spin"></i> Processing...' 
-        : 'Submit & Continue';
-        
-      // Dodanie stylów dla lepszej widoczności
-      if (loading) {
-        submitBtn.style.opacity = '0.7';
-        submitBtn.style.cursor = 'not-allowed';
-      } else {
-        submitBtn.style.opacity = '1';
-        submitBtn.style.cursor = 'pointer';
-      }
-    }
   },
 
   setupFormValidation() {
@@ -315,7 +319,7 @@ const MetaFrogApp = {
     navigator.clipboard.writeText(link)
       .then(() => this.showAlert('✅ Referral link copied!', 'success'))
       .catch(err => {
-        console.error('Copy error:', err);
+        console.error('[ERROR] Copy failed:', err);
         this.showAlert('❌ Failed to copy link', 'error');
       });
   },
@@ -332,12 +336,13 @@ const MetaFrogApp = {
       const script = document.createElement('script');
       script.src = url;
       script.onload = resolve;
-      script.onerror = () => reject(new Error(`Failed to load script: ${url}`));
+      script.onerror = () => reject(new Error(`[ERROR] Failed to load script: ${url}`));
       document.head.appendChild(script);
     });
   },
 
   showEmergencyMode() {
+    console.error('[ERROR] Entering emergency mode');
     document.body.classList.add('firebase-error');
     this.showAlert('⚠️ System is running in limited mode. Some features may not work.', 'warning');
     
@@ -349,20 +354,28 @@ const MetaFrogApp = {
   },
 
   updateStepElement(element, status) {
+    if (!element) {
+      console.error('[ERROR] Step element not found');
+      return;
+    }
+    
     element.classList.remove('completed-step', 'active-step', 'pending-step');
     element.classList.add(`${status}-step`);
     
     const statusElement = element.querySelector('.step-status');
     if (statusElement) {
       statusElement.textContent = status.toUpperCase();
+    } else {
+      console.error('[ERROR] Status element not found in step');
     }
   }
 };
 
 // Inicjalizacja aplikacji
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('[DEBUG] DOM fully loaded, initializing app...');
   MetaFrogApp.init().catch(error => {
-    console.error('Critical initialization error:', error);
+    console.error('[ERROR] Critical initialization error:', error);
     MetaFrogApp.showEmergencyMode();
   });
 });
@@ -462,6 +475,25 @@ style.textContent = `
   .active-step .step-status {
     background: rgba(33, 150, 243, 0.2) !important;
     color: #2196F3 !important;
+  }
+  
+  .pending-step {
+    border-color: #666 !important;
+    background: linear-gradient(135deg, #1a1a1a, #1a1a1a) !important;
+  }
+  
+  .pending-step .step-number {
+    background: #666 !important;
+    border-color: #666 !important;
+  }
+  
+  .pending-step h3 {
+    color: #888 !important;
+  }
+  
+  .pending-step .step-status {
+    background: rgba(102, 102, 102, 0.2) !important;
+    color: #888 !important;
   }
 `;
 document.head.appendChild(style);
