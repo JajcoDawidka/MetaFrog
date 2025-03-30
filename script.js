@@ -1,9 +1,9 @@
 // Import Firebase (wersja modularna)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-import { getDatabase, ref, push, onValue, update } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
-// Konfiguracja Firebase (twoje dane)
+// Konfiguracja Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAR6Ha8baMX5EPsPVayTno0e0QBRqZrmco",
   authDomain: "metafrog-airdrop.firebaseapp.com",
@@ -20,188 +20,103 @@ const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 const auth = getAuth(app);
 
-// Sprawdź poprawność ścieżki (zastępuje 404.html)
-const validPaths = ['/', '/home', '/games', '/airdrop', '/staking', '/about'];
-if (!validPaths.includes(window.location.pathname)) {
-  window.history.replaceState({}, '', '/');
-}
+// Logowanie anonimowe
+signInAnonymously(auth).catch(error => {
+  console.error("Błąd logowania:", error);
+});
 
 class MetaFrogApp {
   constructor() {
     this.validSections = ['home', 'games', 'airdrop', 'staking', 'about'];
-    this.initFirebaseAuth();
+    this.currentSection = null;
     this.init();
   }
 
-  async initFirebaseAuth() {
-    try {
-      await signInAnonymously(auth);
-      console.log("Połączono z Firebase");
-    } catch (error) {
-      console.error("Błąd połączenia z Firebase:", error);
-    }
-  }
-
   init() {
+    this.checkCurrentPath();
     this.setupNavigation();
-    this.handleInitialSection();
     this.setupEventListeners();
-    
-    if (window.location.pathname.includes('airdrop')) {
-      this.initAirdrop();
-    }
   }
 
-  // ======================
-  // NAVIGATION MANAGEMENT
-  // ======================
+  checkCurrentPath() {
+    const path = window.location.pathname.replace(/^\//, '') || 'home';
+    const section = this.validSections.includes(path) ? path : 'home';
+    this.showSection(section);
+  }
+
   setupNavigation() {
     document.querySelectorAll('nav a').forEach(link => {
       link.addEventListener('click', (e) => {
         e.preventDefault();
-        const section = this.getSectionFromHref(link.getAttribute('href'));
-        this.navigateTo(section);
+        const section = link.getAttribute('href').replace(/^\//, '');
+        if (this.validSections.includes(section)) {
+          this.navigateTo(section);
+        } else {
+          this.navigateTo('home');
+        }
       });
     });
   }
 
-  handleInitialSection() {
-    const path = this.getCleanPath(window.location.pathname);
-    this.showSection(path);
-  }
-
   navigateTo(section) {
-    const cleanSection = this.getCleanPath(section);
-    if (!this.isValidPath(cleanSection)) {
-      window.history.replaceState({}, '', '/');
-      this.showSection('home');
-      return;
-    }
+    if (this.currentSection === section) return;
     
-    this.showSection(cleanSection);
-    window.history.pushState({}, '', `/${cleanSection === 'home' ? '' : cleanSection}`);
+    this.showSection(section);
+    window.history.pushState({}, '', `/${section === 'home' ? '' : section}`);
+    this.currentSection = section;
   }
 
   showSection(section) {
+    // Ukryj wszystkie sekcje
     document.querySelectorAll('.section').forEach(sec => {
       sec.classList.remove('active');
     });
 
+    // Pokaż wybraną sekcję
     const sectionEl = document.getElementById(section);
     if (sectionEl) {
       sectionEl.classList.add('active');
       window.scrollTo(0, 0);
     }
 
+    // Aktualizuj styl nawigacji
     this.updateNavStyle(section);
-  }
-
-  // Helper methods
-  getCleanPath(path) {
-    const clean = path.replace(/^\//, '').split('/')[0] || 'home';
-    return this.isValidPath(clean) ? clean : 'home';
-  }
-
-  isValidPath(path) {
-    return this.validSections.includes(path);
-  }
-
-  getSectionFromHref(href) {
-    return href === '/' ? 'home' : href.replace(/^\//, '').split('?')[0];
   }
 
   updateNavStyle(activeSection) {
     document.querySelectorAll('nav a').forEach(link => {
-      const linkSection = this.getSectionFromHref(link.getAttribute('href'));
+      const linkSection = link.getAttribute('href').replace(/^\//, '');
       if (linkSection === activeSection) {
-        link.style.backgroundColor = '#8a2be2';
-        link.style.color = '#111';
+        link.classList.add('active');
       } else {
-        link.style.backgroundColor = '';
-        link.style.color = '';
+        link.classList.remove('active');
       }
     });
   }
 
-  // ======================
-  // FIREBASE INTEGRATION
-  // ======================
-  async saveAirdropData(wallet, xUsername, telegram, tiktok) {
-    try {
-      if (!auth.currentUser) throw new Error("Brak połączenia z bazą");
-      
-      await push(ref(database, 'airdrops'), {
-        wallet,
-        xUsername,
-        telegram,
-        tiktok: tiktok || "",
-        date: new Date().toISOString(),
-        verified: false
-      });
-      return true;
-    } catch (error) {
-      console.error("Błąd zapisu:", error);
-      localStorage.setItem('airdropFormData', JSON.stringify({
-        wallet, xUsername, telegram, tiktok
-      }));
-      return false;
+  setupEventListeners() {
+    window.addEventListener('popstate', () => {
+      this.checkCurrentPath();
+    });
+
+    // Inicjalizacja airdrop jeśli jest na stronie
+    if (window.location.pathname.includes('airdrop')) {
+      this.initAirdrop();
     }
   }
 
-  // ==================
-  // AIRDROP MANAGEMENT
-  // ==================
+  // ======================
+  // AIRDROP IMPLEMENTATION
+  // ======================
   initAirdrop() {
-    this.resetAirdropSteps();
-    
-    if (localStorage.getItem('airdropFormSubmitted')) {
-      this.setStepState(1, 'completed');
-      this.setStepState(2, 'active');
-    } else {
-      this.setStepState(1, 'active');
-    }
+    this.setupAirdropForm();
+    this.setupTaskVerification();
+  }
 
+  setupAirdropForm() {
     const form = document.querySelector('.airdrop-form');
     if (form) {
       form.addEventListener('submit', (e) => this.handleAirdropForm(e));
-    }
-  }
-
-  resetAirdropSteps() {
-    document.querySelectorAll('.step-card').forEach(step => {
-      step.classList.remove('completed-step', 'active-step', 'pending-step');
-      const status = step.querySelector('.step-status');
-      if (status) {
-        status.textContent = 'PENDING';
-        status.style.color = '#777';
-      }
-    });
-  }
-
-  setStepState(stepNumber, state) {
-    const step = document.querySelector(`.step-card:nth-child(${stepNumber})`);
-    if (!step) return;
-
-    step.classList.remove('completed-step', 'active-step', 'pending-step');
-    const status = step.querySelector('.step-status');
-    if (!status) return;
-
-    switch(state) {
-      case 'active':
-        step.classList.add('active-step');
-        status.textContent = 'ACTIVE';
-        status.style.color = '#8a2be2';
-        break;
-      case 'completed':
-        step.classList.add('completed-step');
-        status.textContent = 'COMPLETED';
-        status.style.color = '#4CAF50';
-        break;
-      case 'pending':
-        step.classList.add('pending-step');
-        status.textContent = 'PENDING';
-        status.style.color = '#777';
-        break;
     }
   }
 
@@ -214,80 +129,38 @@ class MetaFrogApp {
     const tiktok = document.getElementById('tiktok').value.trim();
 
     if (!wallet || !xUsername || !telegram) {
-      alert('Wypełnij wymagane pola!');
+      alert('Proszę wypełnić wymagane pola!');
       return;
     }
 
-    const success = await this.saveAirdropData(wallet, xUsername, telegram, tiktok);
-    
-    if (success) {
-      localStorage.setItem('airdropFormSubmitted', 'true');
-      this.setStepState(1, 'completed');
-      this.setStepState(2, 'active');
-      alert('Zgłoszenie zapisane!');
-    } else {
-      alert('Dane zapisane lokalnie. Połącz się z internetem.');
+    try {
+      await push(ref(database, 'airdrops'), {
+        wallet,
+        xUsername,
+        telegram,
+        tiktok: tiktok || "",
+        date: new Date().toISOString()
+      });
+      alert('Dziękujemy za zgłoszenie!');
+    } catch (error) {
+      console.error("Błąd zapisu:", error);
+      alert('Wystąpił błąd podczas zapisywania danych.');
     }
   }
 
-  copyReferralLink() {
-    const referralLink = "https://metafrog.xyz/airdrop?ref=user123";
-    navigator.clipboard.writeText(referralLink)
-      .then(() => alert("Skopiowano link!"))
-      .catch(() => {
-        const textarea = document.createElement('textarea');
-        textarea.value = referralLink;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-        alert("Skopiowano link!");
-      });
+  setupTaskVerification() {
+    // Tutaj dodaj logikę weryfikacji zadań
   }
 }
 
-// Initialize
+// Inicjalizacja aplikacji
 document.addEventListener('DOMContentLoaded', () => {
   window.app = new MetaFrogApp();
-  
-  window.addEventListener('popstate', () => {
-    window.app.handleInitialSection();
-  });
 
-  // Global functions
+  // Globalne funkcje
   window.showHome = () => window.app.navigateTo('home');
   window.showGames = () => window.app.navigateTo('games');
   window.showAirdrop = () => window.app.navigateTo('airdrop');
   window.showStaking = () => window.app.navigateTo('staking');
   window.showAbout = () => window.app.navigateTo('about');
-  window.copyReferralLink = () => window.app.copyReferralLink();
 });
-
-// Admin Panel
-if (window.location.pathname.includes('admin.html')) {
-  onValue(ref(database, 'airdrops'), (snapshot) => {
-    const data = snapshot.val();
-    let html = data ? Object.entries(data).map(([key, entry]) => `
-      <tr>
-        <td>${entry.wallet}</td>
-        <td>${entry.xUsername}</td>
-        <td>${entry.telegram}</td>
-        <td>${entry.tiktok || "-"}</td>
-        <td>${new Date(entry.date).toLocaleString()}</td>
-        <td>
-          <button onclick="verifyEntry('${key}')">
-            ${entry.verified ? '✓' : 'Zweryfikuj'}
-          </button>
-        </td>
-      </tr>
-    `).join('') : '<tr><td colspan="6">Brak danych</td></tr>';
-    
-    document.getElementById("airdropList").innerHTML = html;
-  });
-
-  window.verifyEntry = (key) => {
-    update(ref(database, `airdrops/${key}`), { verified: true })
-      .then(() => alert("Zweryfikowano!"))
-      .catch(error => alert("Błąd: " + error.message));
-  };
-}
