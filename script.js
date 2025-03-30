@@ -1,6 +1,6 @@
 /**
  * MetaFrog - Complete Website Script
- * Version 4.5 - Full Robust Version
+ * Version 4.6 - Full Integration
  */
 
 const firebaseConfig = {
@@ -23,20 +23,18 @@ const MetaFrogApp = {
 
   async initializeFirebase() {
     try {
+      // Dynamiczne ładowanie brakujących bibliotek
       if (typeof firebase === 'undefined') {
-        await Promise.all([
-          this.loadScript('https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js'),
-          this.loadScript('https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js'),
-          this.loadScript('https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js'),
-          this.loadScript('https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js')
-        ]);
+        await this.loadFirebaseDependencies();
       }
 
-      firebase.initializeApp(firebaseConfig);
-      this.db = firebase.firestore();
-      this.auth = firebase.auth();
-      this.realtimeDb = firebase.database();
+      // Inicjalizacja Firebase
+      const app = firebase.initializeApp(firebaseConfig);
+      this.db = app.firestore();
+      this.auth = app.auth();
+      this.realtimeDb = app.database();
 
+      // Logowanie anonimowe
       await this.auth.signInAnonymously();
       console.log('Firebase initialized successfully');
       return true;
@@ -46,23 +44,35 @@ const MetaFrogApp = {
     }
   },
 
+  async loadFirebaseDependencies() {
+    const firebaseScripts = [
+      'https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js',
+      'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js',
+      'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js',
+      'https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js'
+    ];
+
+    await Promise.all(firebaseScripts.map(url => this.loadScript(url)));
+  },
+
   async init() {
     try {
-      const firebaseInitialized = await this.initializeFirebase();
+      // Inicjalizacja Firebase
+      const firebaseReady = await this.initializeFirebase();
       
-      if (!firebaseInitialized) {
-        this.showAlert('⚠️ Warning: Running in limited mode (database offline)', 'warning');
-      }
-
+      // Podstawowe funkcje UI
       this.setupNavigation();
       this.scrollToTop(true);
       
-      if (firebaseInitialized) {
+      // Funkcje zależne od Firebase
+      if (firebaseReady) {
+        this.setupAirdropForm();
         this.setupFormValidation();
         this.setupUsernameFormatting();
         this.checkVerificationStatus();
         this.initializeAirdropSteps();
-        this.setupFormSubmission();
+      } else {
+        this.showAlert('⚠️ Running in limited mode (database offline)', 'warning');
       }
 
     } catch (error) {
@@ -106,9 +116,9 @@ const MetaFrogApp = {
   },
 
   // ======================
-  // FORM HANDLING
+  // AIRDROP FUNCTIONALITY
   // ======================
-  setupFormSubmission() {
+  setupAirdropForm() {
     const form = document.querySelector('.airdrop-form');
     if (form) {
       form.addEventListener('submit', (e) => {
@@ -129,6 +139,7 @@ const MetaFrogApp = {
       const telegram = document.getElementById('telegram').value.trim();
       const tiktok = document.getElementById('tiktok').value.trim();
 
+      // Walidacja
       if (!wallet || !xUsername || !telegram) {
         throw new Error('Please fill all required fields');
       }
@@ -147,9 +158,13 @@ const MetaFrogApp = {
         ip: await this.getIP()
       };
 
-      await this.db.collection('airdropParticipants').doc(wallet).set(submissionData);
-      await this.realtimeDb.ref(`airdropSubmissions/${wallet.replace(/\./g, '_')}`).set(submissionData);
+      // Zapis do Firestore i Realtime Database
+      await Promise.all([
+        this.db.collection('airdropParticipants').doc(wallet).set(submissionData),
+        this.realtimeDb.ref(`airdropSubmissions/${wallet.replace(/\./g, '_')}`).set(submissionData)
+      ]);
 
+      // Aktualizacja UI
       this.updateStepStatus(1, 'completed');
       this.updateStepStatus(2, 'active');
       this.updateStepStatus(3, 'pending');
@@ -169,19 +184,6 @@ const MetaFrogApp = {
     }
   },
 
-  toggleSubmitButton(loading) {
-    const submitBtn = document.querySelector('.airdrop-form button[type="submit"]');
-    if (submitBtn) {
-      submitBtn.disabled = loading;
-      submitBtn.innerHTML = loading 
-        ? '<i class="fas fa-spinner fa-spin"></i> Processing...' 
-        : 'Submit';
-    }
-  },
-
-  // ======================
-  // AIRDROP STEPS
-  // ======================
   initializeAirdropSteps() {
     const steps = document.querySelectorAll('.step-card');
     steps.forEach((step, index) => {
@@ -203,13 +205,28 @@ const MetaFrogApp = {
     }
   },
 
-  updateStepElement(element, status) {
-    element.classList.remove('completed-step', 'active-step', 'pending-step');
-    element.classList.add(`${status}-step`);
-    
-    const statusElement = element.querySelector('.step-status');
-    if (statusElement) {
-      statusElement.textContent = status.toUpperCase();
+  checkVerificationStatus() {
+    const wallet = document.getElementById('wallet')?.value.trim();
+    if (!wallet) return;
+
+    if (localStorage.getItem('mfrog_registered')) {
+      this.updateStepStatus(1, 'completed');
+      this.updateStepStatus(2, 'active');
+      this.updateStepStatus(3, 'pending');
+      return;
+    }
+
+    if (this.db) {
+      this.db.collection('airdropParticipants').doc(wallet).get()
+        .then(doc => {
+          if (doc.exists && doc.data().status === 'registered') {
+            this.updateStepStatus(1, 'completed');
+            this.updateStepStatus(2, 'active');
+            this.updateStepStatus(3, 'pending');
+            localStorage.setItem('mfrog_registered', 'true');
+          }
+        })
+        .catch(error => console.error('Status check error:', error));
     }
   },
 
@@ -243,42 +260,13 @@ const MetaFrogApp = {
     }, 5000);
   },
 
-  copyReferralLink() {
-    const link = `${window.location.origin}${window.location.pathname}?ref=${this.generateReferralCode()}`;
-    navigator.clipboard.writeText(link)
-      .then(() => this.showAlert('✅ Referral link copied!', 'success'))
-      .catch(err => {
-        console.error('Copy error:', err);
-        this.showAlert('❌ Failed to copy link', 'error');
-      });
-  },
-
-  generateReferralCode() {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
-  },
-
-  checkVerificationStatus() {
-    const wallet = document.getElementById('wallet')?.value.trim();
-    if (!wallet) return;
-
-    if (localStorage.getItem('mfrog_registered')) {
-      this.updateStepStatus(1, 'completed');
-      this.updateStepStatus(2, 'active');
-      this.updateStepStatus(3, 'pending');
-      return;
-    }
-
-    if (this.db) {
-      this.db.collection('airdropParticipants').doc(wallet).get()
-        .then(doc => {
-          if (doc.exists && doc.data().status === 'registered') {
-            this.updateStepStatus(1, 'completed');
-            this.updateStepStatus(2, 'active');
-            this.updateStepStatus(3, 'pending');
-            localStorage.setItem('mfrog_registered', 'true');
-          }
-        })
-        .catch(error => console.error('Status check error:', error));
+  toggleSubmitButton(loading) {
+    const submitBtn = document.querySelector('.airdrop-form button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = loading;
+      submitBtn.innerHTML = loading 
+        ? '<i class="fas fa-spinner fa-spin"></i> Processing...' 
+        : 'Submit';
     }
   },
 
@@ -309,6 +297,20 @@ const MetaFrogApp = {
     });
   },
 
+  copyReferralLink() {
+    const link = `${window.location.origin}${window.location.pathname}?ref=${this.generateReferralCode()}`;
+    navigator.clipboard.writeText(link)
+      .then(() => this.showAlert('✅ Referral link copied!', 'success'))
+      .catch(err => {
+        console.error('Copy error:', err);
+        this.showAlert('❌ Failed to copy link', 'error');
+      });
+  },
+
+  generateReferralCode() {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+  },
+
   // ======================
   // FALLBACK SYSTEMS
   // ======================
@@ -317,14 +319,13 @@ const MetaFrogApp = {
       const script = document.createElement('script');
       script.src = url;
       script.onload = resolve;
-      script.onerror = reject;
+      script.onerror = () => reject(new Error(`Failed to load script: ${url}`));
       document.head.appendChild(script);
     });
   },
 
   showEmergencyMode() {
     document.body.classList.add('firebase-error');
-    this.setupNavigation();
     this.showAlert('⚠️ System is running in limited mode. Some features may not work.', 'warning');
     
     const form = document.querySelector('.airdrop-form');
@@ -334,23 +335,18 @@ const MetaFrogApp = {
     }
   },
 
-  async viewSubmissions() {
-    try {
-      if (!this.db) throw new Error('Firebase not initialized');
-      const snapshot = await this.db.collection('airdropParticipants').get();
-      const submissions = [];
-      snapshot.forEach(doc => submissions.push(doc.data()));
-      console.table(submissions);
-      return submissions;
-    } catch (error) {
-      console.error('Error fetching submissions:', error);
-      this.showAlert(`❌ ${error.message}`, 'error');
-      return [];
+  updateStepElement(element, status) {
+    element.classList.remove('completed-step', 'active-step', 'pending-step');
+    element.classList.add(`${status}-step`);
+    
+    const statusElement = element.querySelector('.step-status');
+    if (statusElement) {
+      statusElement.textContent = status.toUpperCase();
     }
   }
 };
 
-// Initialize with error handling
+// Inicjalizacja aplikacji
 document.addEventListener('DOMContentLoaded', () => {
   MetaFrogApp.init().catch(error => {
     console.error('Critical initialization error:', error);
@@ -358,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// Add styles
+// Dodanie styli
 const style = document.createElement('style');
 style.textContent = `
   .mfrog-alert {
