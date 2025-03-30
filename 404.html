@@ -3,13 +3,12 @@
 <head>
     <title>Redirecting...</title>
     <script>
-        // Zapisz oryginalną ścieżkę i przekieruj
         const fullPath = window.location.pathname + window.location.search;
         localStorage.setItem('mfrog_redirect', fullPath);
         window.location.href = '/';
     </script>
 </head>
 <body>
-    <p>Redirecting...</p>
+    <p>Redirecting to homepage...</p>
 </body>
 </html>
