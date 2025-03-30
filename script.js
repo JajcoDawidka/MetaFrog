@@ -1,17 +1,17 @@
 /**
  * MetaFrog - Complete Website Script
- * Version 4.6 - Full Integration
+ * Version 4.8 - Full Implementation
  */
 
 const firebaseConfig = {
   apiKey: "AIzaSyAR6Ha8baMX5EPsPVayTno0e0QBRqZrmco",
   authDomain: "metafrog-airdrop.firebaseapp.com",
+  databaseURL: "https://metafrog-airdrop-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "metafrog-airdrop",
   storageBucket: "metafrog-airdrop.appspot.com",
   messagingSenderId: "546707737127",
   appId: "1:546707737127:web:67956ae63ffef3ebeddc02",
-  measurementId: "G-2Z78VYL739",
-  databaseURL: "https://metafrog-airdrop-default-rtdb.firebaseio.com"
+  measurementId: "G-2Z78VYL739"
 };
 
 const MetaFrogApp = {
@@ -20,21 +20,20 @@ const MetaFrogApp = {
   db: null,
   auth: null,
   realtimeDb: null,
+  analytics: null,
 
   async initializeFirebase() {
     try {
-      // Dynamiczne ładowanie brakujących bibliotek
       if (typeof firebase === 'undefined') {
         await this.loadFirebaseDependencies();
       }
 
-      // Inicjalizacja Firebase
       const app = firebase.initializeApp(firebaseConfig);
       this.db = app.firestore();
       this.auth = app.auth();
       this.realtimeDb = app.database();
+      this.analytics = firebase.analytics();
 
-      // Logowanie anonimowe
       await this.auth.signInAnonymously();
       console.log('Firebase initialized successfully');
       return true;
@@ -49,7 +48,8 @@ const MetaFrogApp = {
       'https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js',
       'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js',
       'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js',
-      'https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js'
+      'https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js',
+      'https://www.gstatic.com/firebasejs/9.6.0/firebase-analytics-compat.js'
     ];
 
     await Promise.all(firebaseScripts.map(url => this.loadScript(url)));
@@ -57,14 +57,11 @@ const MetaFrogApp = {
 
   async init() {
     try {
-      // Inicjalizacja Firebase
       const firebaseReady = await this.initializeFirebase();
       
-      // Podstawowe funkcje UI
       this.setupNavigation();
       this.scrollToTop(true);
       
-      // Funkcje zależne od Firebase
       if (firebaseReady) {
         this.setupAirdropForm();
         this.setupFormValidation();
@@ -81,9 +78,7 @@ const MetaFrogApp = {
     }
   },
 
-  // ======================
-  // CORE FUNCTIONALITY
-  // ======================
+  // Core Functionality
   setupNavigation() {
     document.querySelectorAll('nav a').forEach(link => {
       link.addEventListener('click', (e) => {
@@ -115,15 +110,21 @@ const MetaFrogApp = {
     }
   },
 
-  // ======================
-  // AIRDROP FUNCTIONALITY
-  // ======================
+  // Airdrop Functionality
   setupAirdropForm() {
     const form = document.querySelector('.airdrop-form');
     if (form) {
       form.addEventListener('submit', (e) => {
         e.preventDefault();
         this.handleAirdropForm(e);
+      });
+    }
+
+    const copyBtn = document.getElementById('copyReferralBtn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.copyReferralLink();
       });
     }
   },
@@ -139,7 +140,6 @@ const MetaFrogApp = {
       const telegram = document.getElementById('telegram').value.trim();
       const tiktok = document.getElementById('tiktok').value.trim();
 
-      // Walidacja
       if (!wallet || !xUsername || !telegram) {
         throw new Error('Please fill all required fields');
       }
@@ -158,18 +158,20 @@ const MetaFrogApp = {
         ip: await this.getIP()
       };
 
-      // Zapis do Firestore i Realtime Database
       await Promise.all([
         this.db.collection('airdropParticipants').doc(wallet).set(submissionData),
         this.realtimeDb.ref(`airdropSubmissions/${wallet.replace(/\./g, '_')}`).set(submissionData)
       ]);
 
-      // Aktualizacja UI
       this.updateStepStatus(1, 'completed');
       this.updateStepStatus(2, 'active');
       this.updateStepStatus(3, 'pending');
       this.showAlert('✅ Registration successful!', 'success');
       localStorage.setItem('mfrog_registered', 'true');
+
+      if (this.analytics) {
+        this.analytics.logEvent('airdrop_registration_completed');
+      }
 
     } catch (error) {
       console.error('Submission error:', error);
@@ -230,9 +232,7 @@ const MetaFrogApp = {
     }
   },
 
-  // ======================
-  // UTILITIES
-  // ======================
+  // Utilities
   async getIP() {
     try {
       const response = await fetch('https://api.ipify.org?format=json');
@@ -249,6 +249,8 @@ const MetaFrogApp = {
   },
 
   showAlert(message, type = 'error') {
+    document.querySelectorAll('.mfrog-alert').forEach(alert => alert.remove());
+    
     const alert = document.createElement('div');
     alert.className = `mfrog-alert ${type}`;
     alert.innerHTML = `<div class="mfrog-alert-content">${message}</div>`;
@@ -311,9 +313,7 @@ const MetaFrogApp = {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
   },
 
-  // ======================
-  // FALLBACK SYSTEMS
-  // ======================
+  // Fallback Systems
   loadScript(url) {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
@@ -346,7 +346,7 @@ const MetaFrogApp = {
   }
 };
 
-// Inicjalizacja aplikacji
+// Initialize with error handling
 document.addEventListener('DOMContentLoaded', () => {
   MetaFrogApp.init().catch(error => {
     console.error('Critical initialization error:', error);
@@ -354,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// Dodanie styli
+// Add styles
 const style = document.createElement('style');
 style.textContent = `
   .mfrog-alert {
