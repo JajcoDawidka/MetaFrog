@@ -323,6 +323,21 @@ nav a:hover {
 /* ================== */
 /* 🎁 AIRDROP SECTION */
 /* ================== */
+.alert {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 15px;
+  border-radius: 5px;
+  color: white;
+  z-index: 1000;
+  opacity: 1;
+  transition: opacity 0.5s;
+}
+.alert.error { background: #f44336; }
+.alert.success { background: #4CAF50; }
+.alert.fade-out { opacity: 0; }
+
 #airdrop {
     padding: 40px 20px;
     max-width: 1200px;
