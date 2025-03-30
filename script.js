@@ -1,11 +1,12 @@
 /**
  * MetaFrog - Complete Solution
- * Fixed all navigation and refresh issues
+ * Fixed routing issues for GitHub Pages
  */
 
 class MetaFrogApp {
   constructor() {
     this.validSections = ['home', 'games', 'airdrop', 'staking', 'about'];
+    this.initialized = false;
     this.init();
   }
 
@@ -14,6 +15,7 @@ class MetaFrogApp {
     this.handleInitialSection();
     this.initAirdrop();
     this.setupEventListeners();
+    this.initialized = true;
   }
 
   // ======================
@@ -28,12 +30,25 @@ class MetaFrogApp {
       });
     });
 
-    window.addEventListener('popstate', () => this.handleInitialSection());
+    window.addEventListener('popstate', () => {
+      this.handleInitialSection();
+    });
   }
 
   handleInitialSection() {
+    // Check for redirect from 404 page first
+    const redirectPath = localStorage.getItem('mfrog_redirect');
+    if (redirectPath) {
+      localStorage.removeItem('mfrog_redirect');
+      const section = this.getSectionFromHref(redirectPath);
+      if (this.isValidPath(section)) {
+        this.navigateTo(section, true);
+        return;
+      }
+    }
+
+    // Normal handling
     const path = this.getCurrentPath();
-    
     if (!this.isValidPath(path)) {
       this.navigateTo('home', true);
       return;
@@ -43,7 +58,10 @@ class MetaFrogApp {
   }
 
   navigateTo(section, replace = false) {
-    if (!this.isValidPath(section)) return;
+    if (!this.initialized || !this.isValidPath(section)) {
+      setTimeout(() => this.navigateTo(section, replace), 100);
+      return;
+    }
 
     if (replace) {
       history.replaceState({ section }, null, `/${section === 'home' ? '' : section}`);
@@ -55,6 +73,8 @@ class MetaFrogApp {
   }
 
   showSection(section) {
+    if (!this.initialized) return;
+
     document.querySelectorAll('.section').forEach(sec => {
       sec.classList.remove('active');
     });
@@ -103,6 +123,8 @@ class MetaFrogApp {
   // AIRDROP MANAGEMENT
   // ==================
   initAirdrop() {
+    if (!this.initialized) return;
+
     this.resetAirdropSteps();
     
     if (localStorage.getItem('airdropFormSubmitted')) {
@@ -244,15 +266,15 @@ class MetaFrogApp {
   }
 }
 
-// Initialize the app
+// Initialize the app with redirect handling
 document.addEventListener('DOMContentLoaded', () => {
   window.app = new MetaFrogApp();
   
   // Global functions for HTML onclick handlers
-  window.showHome = () => app.navigateTo('home');
-  window.showGames = () => app.navigateTo('games');
-  window.showAirdrop = () => app.navigateTo('airdrop');
-  window.showStaking = () => app.navigateTo('staking');
-  window.showAbout = () => app.navigateTo('about');
-  window.copyReferralLink = () => app.copyReferralLink();
+  window.showHome = () => window.app.navigateTo('home');
+  window.showGames = () => window.app.navigateTo('games');
+  window.showAirdrop = () => window.app.navigateTo('airdrop');
+  window.showStaking = () => window.app.navigateTo('staking');
+  window.showAbout = () => window.app.navigateTo('about');
+  window.copyReferralLink = () => window.app.copyReferralLink();
 });
