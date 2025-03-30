@@ -4,22 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MetaFrog</title>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
+    <!-- Nagłówek strony -->
     <header>
         <h1>MetaFrog</h1>
         <nav>
             <div id="zakladki">
                 <ul>
-                    <li><a href="#home">Home</a></li>
-                    <li><a href="#games">Games</a></li>
-                    <li><a href="#airdrop">🔥 AIRDROP 🔥</a></li>
-                    <li><a href="#staking">Staking</a></li>
-                    <li><a href="#about">About</a></li>
+                    <li><a href="/" onclick="showHome(); return false;">Home</a></li>
+                    <li><a href="/games" onclick="showGames(); return false;">Games</a></li>
+                    <li><a href="/airdrop" onclick="showAirdrop(); return false;">🔥 AIRDROP 🔥</a></li>
+                    <li><a href="/staking" onclick="showStaking(); return false;">Staking</a></li>
+                    <li><a href="/about" onclick="showAbout(); return false;">About</a></li>
                 </ul>
             </div>
         </nav>
@@ -166,76 +165,78 @@
         </section>
 
     <!-- Airdrop Section -->
-    <section id="airdrop" class="section">
-        <div class="airdrop-header">
-            <h1>
-                <span class="fire-emoji">🔥</span> 
-                <span class="text">$MFROG AIRDROP</span> 
-                <span class="fire-emoji">🔥</span>
-            </h1>
-            <p class="airdrop-subtitle">Claim your free tokens by completing simple tasks</p>
-        </div>
+<section id="airdrop" class="section">
+    <div class="airdrop-header">
+        <h1>
+            <span class="fire-emoji">🔥</span> 
+            <span class="text">$MFROG AIRDROP</span> 
+            <span class="fire-emoji">🔥</span>
+        </h1>
+        <p class="airdrop-subtitle">Claim your free tokens by completing simple tasks</p>
+    </div>
     
-        <div class="airdrop-steps-container">
-            <div class="airdrop-steps">
-                <div class="step-card" id="step1">
-                    <div class="step-number">1</div>
-                    <h3>Register for Airdrop</h3>
-                    <p>Enter your SOL wallet address, provide your X (Twitter), Telegram, and TikTok usernames</p>
-                    <div class="step-status" id="status1">ACTIVE</div>
-                </div>
-                <div class="step-card" id="step2">
-                    <div class="step-number">2</div>
-                    <h3>Complete Tasks</h3>
-                    <p>Finish the required actions to qualify for the airdrop</p>
-                    <div class="step-status" id="status2">PENDING</div>
-                </div>
-                <div class="step-card" id="step3">
-                    <div class="step-number">3</div>
-                    <h3>Wait for Airdrop Completion</h3>
-                    <p>Once the tasks are completed and verified, you'll need to wait for the airdrop to finish before receiving your tokens</p>
-                    <div class="step-status" id="status3">PENDING</div>
-                </div>
+    <div class="airdrop-steps-container">
+        <div class="airdrop-steps">
+            <div class="step-card completed-step">
+                <div class="step-number">1</div>
+                <h3>Register for Airdrop</h3>
+                <p>Enter your SOL wallet address, provide your X (Twitter), Telegram, and TikTok usernames</p>
+                <div class="step-status">COMPLETED</div>
+            </div>
+            
+            <div class="step-card active-step">
+                <div class="step-number">2</div>
+                <h3>Complete Tasks</h3>
+                <p>Finish the required actions to qualify for the airdrop</p>
+                <div class="step-status">ACTIVE</div>
+            </div>
+            
+            <div class="step-card pending-step">
+                <div class="step-number">3</div>
+                <h3>Wait for Airdrop Completion</h3>
+                <p>Once the tasks are completed and verified, you'll need to wait for the airdrop to finish before receiving your tokens</p>
+                <div class="step-status">PENDING</div>
             </div>
         </div>
-        
-        <div class="airdrop-content-wrapper">
-            <div class="airdrop-left-column">
-                <div class="airdrop-form-container">
-                    <div class="form-header">
-                        <h3>Participate in Airdrop</h3>
+    </div>
+    
+    <div class="airdrop-content-wrapper">
+        <!-- Lewa kolumna -->
+        <div class="airdrop-left-column">
+            <div class="airdrop-form-container">
+                <div class="form-header">
+                    <h3>Participate in Airdrop</h3>
+                </div>
+                <form class="airdrop-form">
+                    <div class="form-group">
+                        <label for="wallet">Wallet Address*</label>
+                        <input type="text" id="wallet" placeholder="Enter SOL address" required>
+                        <span class="required-field">Required</span>
                     </div>
-                    <form id="airdropForm" class="airdrop-form">
-                        <div class="form-group">
-                            <label for="wallet">Wallet Address*</label>
-                            <input type="text" id="wallet" placeholder="Enter SOL address" required>
-                            <span class="required-field">Required</span>
-                        </div>
-    
-                        <div class="form-group">
-                            <label for="xUsername">X (Twitter) Username*</label>
-                            <input type="text" id="xUsername" placeholder="@yourusername" required>
-                            <span class="required-field">Required</span>
-                        </div>
-    
-                        <div class="form-group">
-                            <label for="telegram">Telegram Username*</label>
-                            <input type="text" id="telegram" placeholder="@yourusername" required>
-                            <span class="required-field">Required</span>
-                        </div>
-    
-                        <div class="form-group">
-                            <label for="tiktok">TikTok Username</label>
-                            <input type="text" id="tiktok" placeholder="@yourusername">
-                        </div>
-    
-                        <button type="submit" class="submit-btn">
-                            Submit
-                        </button>
-                    </form>
-                </div>
+                    
+                    <div class="form-group">
+                        <label for="xUsername">X (Twitter) Username*</label>
+                        <input type="text" id="xUsername" placeholder="@yourusername" required>
+                        <span class="required-field">Required</span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="telegram">Telegram Username*</label>
+                        <input type="text" id="telegram" placeholder="@yourusername" required>
+                        <span class="required-field">Required</span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="tiktok">TikTok Username</label>
+                        <input type="text" id="tiktok" placeholder="@yourusername">
+                        <span class="required-field">Required</span>
+                    </div>
+                    
+                    <button type="submit" class="submit-btn">
+                        Submit
+                    </button>
+                </form>
             </div>
-        </div>
             
             <div class="airdrop-status">
                 <div class="status-card">
