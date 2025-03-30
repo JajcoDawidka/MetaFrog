@@ -1,203 +1,291 @@
-// ======================
-// 🔥 FIREBASE INITIALIZATION
-// ======================
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+/**
+ * MetaFrog - Complete Website Script
+ * Version 2.6 - Fixed Airdrop Steps Status Logic
+ */
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAR6Ha8baMX5EPsPVayTno0e0QBRqZrmco",
-  authDomain: "metafrog-airdrop.firebaseapp.com",
-  databaseURL: "https://metafrog-airdrop-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "metafrog-airdrop",
-  storageBucket: "metafrog-airdrop.firebasestorage.app",
-  messagingSenderId: "546707737127",
-  appId: "1:546707737127:web:67956ae63ffef3ebeddc02",
-  measurementId: "G-2Z78VYL739"
-};
-
-const app = initializeApp(firebaseConfig);
-const database = getDatabase(app);
-
-// ======================
-// 🏠 SECTION NAVIGATION
-// ======================
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize default active tab
-    setActiveTab('home');
-    showSection('home');
-
-    // Setup navigation click handlers
-    document.querySelectorAll('nav ul li a').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const sectionId = this.getAttribute('href').replace('/', '');
-            setActiveTab(sectionId);
-            showSection(sectionId);
+    apiKey: "AIzaSyAR6Ha8baMX5EPsPVayTno0e0QBRqZrmco",
+    authDomain: "metafrog-airdrop.firebaseapp.com",
+    projectId: "metafrog-airdrop",
+    storageBucket: "metafrog-airdrop.appspot.com",
+    messagingSenderId: "546707737127",
+    appId: "1:546707737127:web:67956ae63ffef3ebeddc02",
+    measurementId: "G-2Z78VYL739"
+  };
+  
+  const MetaFrogApp = {
+    init() {
+      document.documentElement.style.scrollBehavior = 'smooth';
+      this.scrollToTop();
+      
+      this.initializeFirebase();
+      this.setupEventListeners();
+      this.handleInitialRoute();
+      this.initCounters();
+      this.checkVerificationStatus();
+      
+      // Initialize steps with correct colors
+      this.initializeAirdropSteps();
+    },
+  
+    initializeAirdropSteps() {
+      const steps = document.querySelectorAll('.step-card');
+      
+      // Check if user already registered
+      const wallet = document.getElementById('wallet')?.value.trim();
+      
+      if (!wallet) {
+        // New user - Step 1 active (purple), others pending (gray)
+        steps.forEach((step, index) => {
+          step.classList.remove('completed-step', 'active-step', 'pending-step');
+          step.classList.add(index === 0 ? 'active-step' : 'pending-step');
+          
+          // Update status text
+          const statusElement = step.querySelector('.step-status');
+          if (statusElement) {
+            statusElement.textContent = index === 0 ? 'ACTIVE' : 'PENDING';
+          }
         });
-    });
-
-    // Initialize airdrop functionality
-    initAirdrop();
-});
-
-function setActiveTab(sectionId) {
-    document.querySelectorAll('nav ul li a').forEach(link => {
-        link.classList.remove('active');
-        if (link.getAttribute('href').includes(sectionId)) {
-            link.classList.add('active');
+      }
+    },
+  
+    scrollToTop() {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+  
+    initializeFirebase() {
+      try {
+        firebase.initializeApp(firebaseConfig);
+        this.db = firebase.firestore();
+      } catch (error) {
+        console.error("Firebase error:", error);
+        this.showAlert("Connection error. Please refresh.", "error");
+      }
+    },
+  
+    setupEventListeners() {
+      document.addEventListener('click', (e) => {
+        if (e.target.closest('nav a')) {
+          e.preventDefault();
+          const section = this.getSectionFromHref(e.target.closest('nav a').getAttribute('href'));
+          this.showSection(section);
         }
-    });
-}
-
-function showSection(sectionId) {
-    document.querySelectorAll('.section').forEach(section => {
-        section.classList.remove('active');
-    });
-
-    const targetSection = document.getElementById(sectionId);
-    if (targetSection) {
-        targetSection.classList.add('active');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-}
-
-// ======================
-// 🎁 AIRDROP FUNCTIONALITY
-// ======================
-function initAirdrop() {
-    const airdropSection = document.getElementById('airdrop');
-    if (!airdropSection) return;
-
-    // Check if form was previously submitted
-    const formSubmitted = localStorage.getItem('airdropFormSubmitted');
-    const savedFormData = localStorage.getItem('airdropFormData');
-
-    // Initialize steps
-    updateAirdropSteps(formSubmitted ? 2 : 1);
-
-    // Setup form submission
-    const airdropForm = airdropSection.querySelector('form');
-    if (airdropForm) {
-        if (savedFormData) {
-            fillFormWithSavedData(JSON.parse(savedFormData));
+  
+        if (e.target.closest('.task-link') && e.target.closest('[onclick="copyReferralLink()"]')) {
+          e.preventDefault();
+          this.copyReferralLink();
         }
-
-        airdropForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const formData = {
-                wallet: this.wallet.value.trim(),
-                xUsername: this.xUsername.value.trim(),
-                telegram: this.telegram.value.trim(),
-                tiktok: this.tiktok.value.trim(),
-                timestamp: new Date().toISOString(),
-                ip: await fetch('https://api.ipify.org?format=json').then(res => res.json()).then(data => data.ip)
-            };
-
-            if (!validateAirdropForm(formData)) return;
-
-            try {
-                await saveToFirebase(formData);
-                localStorage.setItem('airdropFormSubmitted', 'true');
-                localStorage.setItem('airdropFormData', JSON.stringify(formData));
-                updateAirdropSteps(2);
-                alert('Form submitted successfully! Complete the tasks in Step 2.');
-            } catch (error) {
-                console.error('Submission error:', error);
-                alert('Error submitting form. Please try again.');
-            }
-        });
-    }
-
-    // Setup task links
-    setupTaskLinks();
-}
-
-function updateAirdropSteps(activeStep) {
-    const steps = document.querySelectorAll('.step-card');
-    steps.forEach((step, index) => {
-        step.className = 'step-card';
-        const statusElement = step.querySelector('.step-status');
+  
+        if (e.target.closest('.dexscreener-link')) {
+          e.preventDefault();
+          this.verifyDexScreener(e);
+        }
+      });
+  
+      const airdropForm = document.querySelector('.airdrop-form');
+      if (airdropForm) {
+        airdropForm.addEventListener('submit', (e) => this.handleAirdropForm(e));
+      }
+  
+      window.addEventListener('popstate', () => {
+        this.handleInitialRoute();
+        this.scrollToTop();
+      });
+    },
+  
+    async handleAirdropForm(e) {
+      e.preventDefault();
+      
+      const wallet = document.getElementById('wallet').value.trim();
+      const xUsername = document.getElementById('xUsername').value.trim();
+      const telegram = document.getElementById('telegram').value.trim();
+      const tiktok = document.getElementById('tiktok').value.trim();
+  
+      if (!wallet || !xUsername || !telegram) {
+        this.showAlert('Please fill all required fields', 'error');
+        return;
+      }
+  
+      if (!this.isValidSolanaAddress(wallet)) {
+        this.showAlert('Invalid Solana address', 'error');
+        return;
+      }
+  
+      const submissionData = {
+        wallet,
+        xUsername: xUsername.startsWith('@') ? xUsername : `@${xUsername}`,
+        telegram: telegram.startsWith('@') ? telegram : `@${telegram}`,
+        tiktok: tiktok ? (tiktok.startsWith('@') ? tiktok : `@${tiktok}`) : 'N/A',
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        completedTasks: [],
+        status: 'registered',
+        verificationStatus: {
+          twitter: false,
+          telegram: false,
+          tiktok: false,
+          dexscreener: false
+        }
+      };
+  
+      try {
+        await this.db.collection('airdropParticipants').doc(wallet).set(submissionData);
         
-        if (index + 1 < activeStep) {
-            step.classList.add('completed-step');
-            if (statusElement) statusElement.textContent = 'COMPLETED';
-        } else if (index + 1 === activeStep) {
-            step.classList.add('active-step');
-            if (statusElement) statusElement.textContent = 'ACTIVE';
-        } else {
-            step.classList.add('pending-step');
-            if (statusElement) statusElement.textContent = 'PENDING';
+        // Update steps after successful registration
+        this.updateStepStatus(1, 'completed');
+        this.updateStepStatus(2, 'active');
+        this.updateStepStatus(3, 'pending');
+        
+        this.showAlert('Registration successful!', 'success');
+      } catch (error) {
+        console.error("Save error:", error);
+        this.showAlert('Submission failed. Try again.', 'error');
+      }
+    },
+  
+    updateStepStatus(stepNumber, status) {
+      const step = document.querySelector(`.step-card:nth-child(${stepNumber})`);
+      if (step) {
+        // Reset all status classes
+        step.classList.remove('completed-step', 'active-step', 'pending-step');
+        
+        // Add new status class
+        step.classList.add(`${status}-step`);
+        
+        // Update status text
+        const statusElement = step.querySelector('.step-status');
+        if (statusElement) {
+          statusElement.textContent = status.toUpperCase();
         }
-    });
-}
-
-function fillFormWithSavedData(formData) {
-    const form = document.querySelector('.airdrop-form');
-    if (!form) return;
-
-    form.wallet.value = formData.wallet || '';
-    form.xUsername.value = formData.xUsername || '';
-    form.telegram.value = formData.telegram || '';
-    form.tiktok.value = formData.tiktok || '';
-
-    // Disable fields after submission
-    if (localStorage.getItem('airdropFormSubmitted')) {
-        form.querySelectorAll('input').forEach(input => {
-            input.readOnly = true;
+      }
+    },
+  
+    async verifyDexScreener(e) {
+      const wallet = document.getElementById('wallet')?.value.trim();
+      if (!wallet) {
+        this.showAlert('Enter wallet first', 'error');
+        return;
+      }
+  
+      try {
+        await this.db.collection('airdropParticipants').doc(wallet).update({
+          'verificationStatus.dexscreener': true,
+          'completedTasks': firebase.firestore.FieldValue.arrayUnion('dexscreener')
         });
-    }
-}
-
-function validateAirdropForm(formData) {
-    if (!formData.wallet || !formData.xUsername || !formData.telegram) {
-        alert('Please fill all required fields!');
-        return false;
-    }
-
-    if (!isValidSolanaAddress(formData.wallet)) {
-        alert('Please enter a valid Solana wallet address!');
-        return false;
-    }
-
-    return true;
-}
-
-async function saveToFirebase(formData) {
-    const userId = formData.wallet.replace(/[^a-zA-Z0-9]/g, '_');
-    const userRef = ref(database, `airdrop_submissions/${userId}`);
-    await set(userRef, formData);
-}
-
-function setupTaskLinks() {
-    document.querySelectorAll('.task-link').forEach(link => {
-        if (link.classList.contains('dexscreener-link')) {
-            link.addEventListener('click', function() {
-                setTimeout(() => {
-                    this.querySelector('.verification-status').classList.add('task-verified');
-                }, 2000);
-            });
+        
+        this.updateVerificationUI('dexscreener');
+        this.showAlert('Task verified!', 'success');
+      } catch (error) {
+        console.error("Verification error:", error);
+        this.showAlert('Verification failed', 'error');
+      }
+    },
+  
+    updateVerificationUI(taskName) {
+      const element = document.querySelector(`.${taskName}-verification`);
+      if (element) {
+        element.innerHTML = '<i class="fas fa-check-circle"></i> Verified';
+        element.style.color = '#4CAF50';
+      }
+    },
+  
+    async checkVerificationStatus() {
+      const wallet = document.getElementById('wallet')?.value.trim();
+      if (!wallet) return;
+  
+      try {
+        const doc = await this.db.collection('airdropParticipants').doc(wallet).get();
+        if (doc.exists) {
+          const data = doc.data();
+          
+          // Update verification status
+          for (const task in data.verificationStatus) {
+            if (data.verificationStatus[task]) {
+              this.updateVerificationUI(task);
+            }
+          }
+          
+          // If registered, update steps
+          if (data.status === 'registered') {
+            this.updateStepStatus(1, 'completed');
+            this.updateStepStatus(2, 'active');
+            this.updateStepStatus(3, 'pending');
+          }
         }
-    });
-}
-
-function isValidSolanaAddress(address) {
-    return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
-}
-
-// ======================
-// 📋 UTILITY FUNCTIONS
-// ======================
-function copyReferralLink() {
-    const wallet = localStorage.getItem('airdropFormData') 
-        ? JSON.parse(localStorage.getItem('airdropFormData')).wallet 
-        : 'join';
-    const referralLink = `${window.location.origin}?ref=${wallet}`;
-
-    navigator.clipboard.writeText(referralLink)
-        .then(() => alert(`Referral link copied: ${referralLink}`))
-        .catch(() => prompt('Copy this link manually:', referralLink));
-}
-
-// Make copyReferralLink available globally
-window.copyReferralLink = copyReferralLink;
+      } catch (error) {
+        console.error("Status check error:", error);
+      }
+    },
+  
+    copyReferralLink() {
+      const link = `${window.location.origin}${window.location.pathname}?ref=${this.generateReferralCode()}`;
+      navigator.clipboard.writeText(link)
+        .then(() => this.showAlert('Link copied!', 'success'))
+        .catch(err => {
+          console.error('Copy error:', err);
+          this.showAlert('Copy failed', 'error');
+        });
+    },
+  
+    generateReferralCode() {
+      return Math.random().toString(36).substring(2, 8).toUpperCase();
+    },
+  
+    isValidSolanaAddress(address) {
+      return address.length >= 32 && address.length <= 44 && 
+             /^[A-HJ-NP-Za-km-z1-9]*$/.test(address);
+    },
+  
+    showAlert(message, type = 'error') {
+      const alert = document.createElement('div');
+      alert.className = `alert ${type}`;
+      alert.textContent = message;
+      document.body.appendChild(alert);
+      
+      setTimeout(() => {
+        alert.classList.add('fade-out');
+        setTimeout(() => alert.remove(), 500);
+      }, 3000);
+    },
+  
+    showSection(sectionId) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      const section = document.getElementById(sectionId);
+      if (section) {
+        section.classList.add('active');
+        history.pushState(null, null, `#${sectionId}`);
+        setTimeout(() => this.scrollToTop(), 10);
+      }
+    },
+  
+    handleInitialRoute() {
+      const section = this.getSectionFromHref(window.location.hash) || 'home';
+      this.showSection(section);
+    },
+  
+    getSectionFromHref(href) {
+      return href.replace(/^#\/?/, '') || 'home';
+    },
+  
+    initCounters() {
+      this.animateCounter('participants-counter', 12500);
+      this.animateCounter('tokens-counter', 2500000);
+    },
+  
+    animateCounter(id, target) {
+      const element = document.getElementById(id);
+      if (!element) return;
+      
+      let current = 0;
+      const timer = setInterval(() => {
+        current += target / 100;
+        element.textContent = Math.floor(current).toLocaleString();
+        if (current >= target) {
+          element.textContent = target.toLocaleString();
+          clearInterval(timer);
+        }
+      }, 20);
+    }
+  };
+  
+  document.addEventListener('DOMContentLoaded', () => MetaFrogApp.init());
+  window.addEventListener('error', (e) => console.error('Error:', e.error));
