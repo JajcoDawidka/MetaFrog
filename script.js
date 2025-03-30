@@ -35,6 +35,7 @@ class MetaFrogApp {
     this.setupNavigation();
     this.handleInitialSection();
     this.setupEventListeners();
+    this.preventExternalLinkDefault();
   }
 
   // ======================
@@ -45,27 +46,40 @@ class MetaFrogApp {
       link.addEventListener('click', (e) => {
         e.preventDefault();
         const href = link.getAttribute('href');
-        const section = href === '/' ? 'home' : href.replace(/^\//, '');
+        const section = href.replace(/^#/, '');
         this.navigateTo(section);
       });
     });
   }
 
+  preventExternalLinkDefault() {
+    document.querySelectorAll('a').forEach(link => {
+      if (link.href && !link.getAttribute('href').startsWith('#')) {
+        link.addEventListener('click', (e) => {
+          if (!link.target || link.target !== '_blank') {
+            e.preventDefault();
+            window.open(link.href, '_blank');
+          }
+        });
+      }
+    });
+  }
+
   handleInitialSection() {
-    const path = window.location.pathname;
-    const section = path === '/' ? 'home' : path.replace(/^\//, '').split('/')[0];
+    const hash = window.location.hash;
+    const section = hash ? hash.replace(/^#/, '') : 'home';
     this.showSection(this.isValidPath(section) ? section : 'home');
   }
 
   navigateTo(section) {
     if (!this.isValidPath(section)) {
-      window.history.replaceState({}, '', '/');
+      window.location.hash = '';
       this.showSection('home');
       return;
     }
     
     this.showSection(section);
-    window.history.pushState({}, '', `/${section === 'home' ? '' : section}`);
+    window.location.hash = section;
   }
 
   showSection(section) {
@@ -93,7 +107,7 @@ class MetaFrogApp {
   updateNavStyle(activeSection) {
     document.querySelectorAll('nav a').forEach(link => {
       const href = link.getAttribute('href');
-      const linkSection = href === '/' ? 'home' : href.replace(/^\//, '');
+      const linkSection = href.replace(/^#/, '');
       
       if (linkSection === activeSection) {
         link.style.backgroundColor = '#8a2be2';
@@ -110,7 +124,7 @@ class MetaFrogApp {
   }
 
   setupEventListeners() {
-    window.addEventListener('popstate', () => {
+    window.addEventListener('hashchange', () => {
       this.handleInitialSection();
     });
   }
@@ -186,12 +200,18 @@ class MetaFrogApp {
       return;
     }
 
+    // Basic Solana address validation
+    if (!this.isValidSolanaAddress(wallet)) {
+      alert('Please enter a valid Solana wallet address');
+      return;
+    }
+
     try {
       await push(ref(database, 'airdrops'), {
         wallet,
-        xUsername,
-        telegram,
-        tiktok: tiktok || "",
+        xUsername: xUsername.startsWith('@') ? xUsername : `@${xUsername}`,
+        telegram: telegram.startsWith('@') ? telegram : `@${telegram}`,
+        tiktok: tiktok ? (tiktok.startsWith('@') ? tiktok : `@${tiktok}`) : "",
         date: new Date().toISOString(),
         verified: false
       });
@@ -199,11 +219,22 @@ class MetaFrogApp {
       localStorage.setItem('airdropFormSubmitted', 'true');
       this.setStepState(1, 'completed');
       this.setStepState(2, 'active');
-      alert('Registration successful!');
+      
+      // Show success message
+      const submitBtn = document.querySelector('.submit-btn');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<i class="fas fa-check"></i> Submitted!';
+      setTimeout(() => {
+        submitBtn.innerHTML = originalText;
+      }, 3000);
     } catch (error) {
       console.error("Error saving data:", error);
       alert('Error saving data. Please try again.');
     }
+  }
+
+  isValidSolanaAddress(address) {
+    return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
   }
 
   setupTaskVerification() {
@@ -222,7 +253,7 @@ class MetaFrogApp {
   }
 
   markTaskVerified(taskType) {
-    const taskElement = document.querySelector(`.${taskType}-link`).closest('.task-card');
+    const taskElement = document.querySelector(`.${taskType}-link`)?.closest('.task-card');
     if (taskElement) {
       const status = taskElement.querySelector('.verification-status');
       if (status) {
@@ -233,8 +264,8 @@ class MetaFrogApp {
   }
 
   copyReferralLink() {
-    const referralLink = "https://metafrog.xyz/airdrop?ref=user123";
-    const button = document.querySelector('.task-link button');
+    const referralLink = "https://metafrog.xyz/#airdrop?ref=user123";
+    const button = document.querySelector('.task-link');
     
     if (!button) return;
 
@@ -289,8 +320,8 @@ if (window.location.pathname.includes('admin.html')) {
             <td>${entry.tiktok || "-"}</td>
             <td>${new Date(entry.date).toLocaleString()}</td>
             <td>
-              <button onclick="verifyEntry('${key}')">
-                ${entry.verified ? '✓' : 'Verify'}
+              <button onclick="verifyEntry('${key}')" class="${entry.verified ? 'verified' : ''}">
+                ${entry.verified ? '✓ Verified' : 'Verify'}
               </button>
             </td>
           </tr>
