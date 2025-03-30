@@ -102,7 +102,7 @@ const MetaFrogApp = {
       timestamp: firebase.firestore.FieldValue.serverTimestamp(),
       userAgent: navigator.userAgent,
       completedTasks: [],
-      status: 'completed', // Zmieniamy status sekcji "Register for Airdrop"
+      status: 'registered',
       referralCode: this.getReferralCodeFromURL() || 'direct',
       verificationStatus: {
         twitter: false,
@@ -118,14 +118,8 @@ const MetaFrogApp = {
       await this.db.collection('airdropParticipants').doc(wallet).set(submissionData);
       
       // Aktualizacja UI
-      this.advanceToStep(2); // Zmieniamy na krok 2, bo zarejestrowano użytkownika
+      this.advanceToStep(2);
       this.showAlert('Rejestracja udana! Możesz teraz wykonać zadania.', 'success');
-      
-      // Zaktualizuj status "Complete Tasks"
-      await this.db.collection('airdropParticipants').doc(wallet).update({
-        status: 'active' // Zmieniamy status sekcji "Complete Tasks" na active
-      });
-
       this.trackConversion();
       
     } catch (error) {
@@ -134,37 +128,19 @@ const MetaFrogApp = {
     }
   },
 
-  // Weryfikacja zadania DexScreener
-  async verifyDexScreener(e) {
-    const wallet = document.getElementById('wallet')?.value.trim();
-    
-    if (!wallet) {
-      this.showAlert('Proszę najpierw podać adres portfela', 'error');
-      return;
-    }
-
-    try {
-      await this.db.collection('airdropParticipants').doc(wallet).update({
-        'verificationStatus.dexscreener': true,
-        'completedTasks': firebase.firestore.FieldValue.arrayUnion('dexscreener'),
-        'points': firebase.firestore.FieldValue.increment(10)
-      });
+  // Aktualizacja kroków airdrop
+  advanceToStep(stepNumber) {
+    document.querySelectorAll('.step-card').forEach((card, index) => {
+      card.classList.remove('completed-step', 'active-step', 'pending-step');
       
-      this.updateVerificationUI('dexscreener');
-      this.showAlert('Zadanie DexScreener zweryfikowane!', 'success');
-    } catch (error) {
-      console.error("Błąd weryfikacji DexScreener:", error);
-      this.showAlert('Błąd weryfikacji. Spróbuj ponownie.', 'error');
-    }
-  },
-
-  // Aktualizacja UI po weryfikacji
-  updateVerificationUI(taskName) {
-    const statusElement = document.querySelector(`.${taskName}-verification`);
-    if (statusElement) {
-      statusElement.innerHTML = '<i class="fas fa-check-circle"></i> Zweryfikowano';
-      statusElement.style.color = '#4CAF50';
-    }
+      if (index + 1 < stepNumber) {
+        card.classList.add('completed-step');
+      } else if (index + 1 === stepNumber) {
+        card.classList.add('active-step');
+      } else {
+        card.classList.add('pending-step');
+      }
+    });
   },
 
   // Sprawdzenie statusu weryfikacji
@@ -267,23 +243,10 @@ const MetaFrogApp = {
     return href.replace(/^#\/?/, '') || 'home';
   },
 
-  // Aktualizacja kroków airdrop
-  advanceToStep(stepNumber) {
-    document.querySelectorAll('.step-card').forEach((card, index) => {
-      card.classList.remove('completed-step', 'active-step', 'pending-step');
-      
-      if (index + 1 < stepNumber) {
-        card.classList.add('completed-step');
-      } else if (index + 1 === stepNumber) {
-        card.classList.add('active-step');
-      } else {
-        card.classList.add('pending-step');
-      }
-    });
-  },
-
   // Animacja liczników
   initCounters() {
+    // Ustawienie pierwszego kroku jako active od razu
+    this.advanceToStep(1);
     this.animateCounter('participants-counter', 12500);
     this.animateCounter('tokens-counter', 2500000);
   },
