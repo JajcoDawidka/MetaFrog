@@ -1,24 +1,25 @@
-/**
- * MetaFrog - Final Working Version with Firebase
- * Now with admin panel support
- */
+// Import Firebase (wersja modularna - działająca bezpośrednio w przeglądarce)
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+import { getDatabase, ref, push, onValue, update } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+// Konfiguracja Firebase (twoje dane)
+const firebaseConfig = {
+  apiKey: "AIzaSyAR6Ha8baMX5EPsPVayTno0e0QBRqZrmco",
+  authDomain: "metafrog-airdrop.firebaseapp.com",
+  databaseURL: "https://metafrog-airdrop-default-rtdb.firebaseio.com",
+  projectId: "metafrog-airdrop",
+  storageBucket: "metafrog-airdrop.firebasestorage.app",
+  messagingSenderId: "546707737127",
+  appId: "1:546707737127:web:67956ae63ffef3ebeddc02",
+  measurementId: "G-2Z78VYL739"
+};
+
+// Inicjalizacja Firebase
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
 
 class MetaFrogApp {
   constructor() {
-    // Initialize Firebase
-    this.firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT.firebaseapp.com",
-      databaseURL: "https://YOUR_PROJECT.firebaseio.com",
-      projectId: "YOUR_PROJECT",
-      storageBucket: "",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
-    };
-
-    firebase.initializeApp(this.firebaseConfig);
-    this.database = firebase.database();
-
     this.validSections = ['home', 'games', 'airdrop', 'staking', 'about'];
     this.init();
   }
@@ -102,11 +103,11 @@ class MetaFrogApp {
   }
 
   // ======================
-  // FIREBASE INTEGRATION
+  // FIREBASE INTEGRATION (v9)
   // ======================
   async saveAirdropData(wallet, xUsername, telegram, tiktok) {
     try {
-      const newEntry = {
+      await push(ref(database, 'airdrops'), {
         wallet,
         xUsername,
         telegram,
@@ -118,9 +119,7 @@ class MetaFrogApp {
           telegram: false,
           tiktok: false
         }
-      };
-
-      await this.database.ref('airdrops/').push(newEntry);
+      });
       return true;
     } catch (error) {
       console.error("Firebase save error:", error);
@@ -196,7 +195,7 @@ class MetaFrogApp {
     const tiktok = document.getElementById('tiktok').value.trim();
 
     if (!wallet || !xUsername || !telegram) {
-      alert('Please fill all required fields');
+      alert('Proszę wypełnić wymagane pola!');
       return;
     }
 
@@ -214,9 +213,9 @@ class MetaFrogApp {
       this.setStepState(1, 'completed');
       this.setStepState(2, 'active');
       
-      alert('Registration successful! You can now complete the tasks.');
+      alert('Rejestracja udana! Możesz teraz wykonać zadania.');
     } else {
-      alert('Error saving data. Please try again.');
+      alert('Błąd zapisu danych. Spróbuj ponownie.');
     }
   }
 
@@ -240,7 +239,7 @@ class MetaFrogApp {
     if (taskElement) {
       const status = taskElement.querySelector('.verification-status');
       if (status) {
-        status.textContent = "✓ Verified";
+        status.textContent = "✓ Zweryfikowano";
         status.style.color = "#4CAF50";
       }
     }
@@ -255,15 +254,14 @@ class MetaFrogApp {
     navigator.clipboard.writeText(referralLink)
       .then(() => {
         const originalHTML = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        button.innerHTML = '<i class="fas fa-check"></i> Skopiowano!';
         
         setTimeout(() => {
           button.innerHTML = originalHTML;
         }, 2000);
       })
       .catch(err => {
-        console.error('Copy failed:', err);
-        // Fallback for older browsers
+        console.error('Błąd kopiowania:', err);
         const textarea = document.createElement('textarea');
         textarea.value = referralLink;
         document.body.appendChild(textarea);
@@ -272,7 +270,7 @@ class MetaFrogApp {
         document.body.removeChild(textarea);
         
         const originalHTML = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        button.innerHTML = '<i class="fas fa-check"></i> Skopiowano!';
         setTimeout(() => {
           button.innerHTML = originalHTML;
         }, 2000);
@@ -284,7 +282,6 @@ class MetaFrogApp {
 document.addEventListener('DOMContentLoaded', () => {
   window.app = new MetaFrogApp();
   
-  // Handle browser back/forward
   window.addEventListener('popstate', () => {
     window.app.handleInitialSection();
   });
@@ -297,3 +294,62 @@ document.addEventListener('DOMContentLoaded', () => {
   window.showAbout = () => window.app.navigateTo('about');
   window.copyReferralLink = () => window.app.copyReferralLink();
 });
+
+// ======================
+// ADMIN PANEL FUNCTIONS
+// ======================
+if (window.location.pathname.includes('admin.html')) {
+  function loadAirdrops() {
+    onValue(ref(database, 'airdrops'), (snapshot) => {
+      const data = snapshot.val();
+      let html = "";
+      
+      for (let key in data) {
+        const entry = data[key];
+        html += `
+          <tr>
+            <td>${entry.wallet}</td>
+            <td>${entry.xUsername}</td>
+            <td>${entry.telegram}</td>
+            <td>${entry.tiktok || "-"}</td>
+            <td>${new Date(entry.date).toLocaleString()}</td>
+            <td>
+              <button onclick="verifyEntry('${key}')" class="verify-btn">
+                ${entry.verified ? '✓ Zweryfikowano' : 'Zweryfikuj'}
+              </button>
+            </td>
+          </tr>
+        `;
+      }
+      
+      document.getElementById("airdropList").innerHTML = html;
+    });
+  }
+
+  window.verifyEntry = (key) => {
+    if (confirm("Czy na pewno chcesz zweryfikować to zgłoszenie?")) {
+      update(ref(database, `airdrops/${key}`), { verified: true })
+        .then(() => alert("Zgłoszenie zweryfikowane!"))
+        .catch(error => alert("Błąd: " + error));
+    }
+  };
+
+  // Wyszukiwarka
+  document.getElementById("searchInput")?.addEventListener("input", (e) => {
+    const searchTerm = e.target.value.toLowerCase();
+    const rows = document.querySelectorAll("#airdropTable tbody tr");
+
+    rows.forEach(row => {
+      const wallet = row.cells[0].textContent.toLowerCase();
+      const twitter = row.cells[1].textContent.toLowerCase();
+      if (wallet.includes(searchTerm) || twitter.includes(searchTerm)) {
+        row.style.display = "";
+      } else {
+        row.style.display = "none";
+      }
+    });
+  });
+
+  // Ładowanie danych przy starcie
+  window.onload = loadAirdrops;
+}
