@@ -1,10 +1,24 @@
 /**
- * MetaFrog - Final Working Version
- * Fixed all navigation issues
+ * MetaFrog - Final Working Version with Firebase
+ * Now with admin panel support
  */
 
 class MetaFrogApp {
   constructor() {
+    // Initialize Firebase
+    this.firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+      projectId: "YOUR_PROJECT",
+      storageBucket: "",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    firebase.initializeApp(this.firebaseConfig);
+    this.database = firebase.database();
+
     this.validSections = ['home', 'games', 'airdrop', 'staking', 'about'];
     this.init();
   }
@@ -43,22 +57,18 @@ class MetaFrogApp {
   }
 
   showSection(section) {
-    // Hide all sections
     document.querySelectorAll('.section').forEach(sec => {
       sec.classList.remove('active');
     });
 
-    // Show requested section
     const sectionEl = document.getElementById(section);
     if (sectionEl) {
       sectionEl.classList.add('active');
       window.scrollTo(0, 0);
     }
 
-    // Update nav styling
     this.updateNavStyle(section);
 
-    // Special handling for airdrop section
     if (section === 'airdrop') {
       this.initAirdrop();
     }
@@ -89,6 +99,33 @@ class MetaFrogApp {
         link.style.color = '';
       }
     });
+  }
+
+  // ======================
+  // FIREBASE INTEGRATION
+  // ======================
+  async saveAirdropData(wallet, xUsername, telegram, tiktok) {
+    try {
+      const newEntry = {
+        wallet,
+        xUsername,
+        telegram,
+        tiktok: tiktok || "",
+        date: new Date().toISOString(),
+        verified: false,
+        tasks: {
+          twitter: false,
+          telegram: false,
+          tiktok: false
+        }
+      };
+
+      await this.database.ref('airdrops/').push(newEntry);
+      return true;
+    } catch (error) {
+      console.error("Firebase save error:", error);
+      return false;
+    }
   }
 
   // ==================
@@ -150,30 +187,37 @@ class MetaFrogApp {
     }
   }
 
-  handleAirdropForm(e) {
+  async handleAirdropForm(e) {
     e.preventDefault();
 
     const wallet = document.getElementById('wallet').value.trim();
     const xUsername = document.getElementById('xUsername').value.trim();
     const telegram = document.getElementById('telegram').value.trim();
+    const tiktok = document.getElementById('tiktok').value.trim();
 
     if (!wallet || !xUsername || !telegram) {
       alert('Please fill all required fields');
       return;
     }
 
-    localStorage.setItem('airdropFormSubmitted', 'true');
-    localStorage.setItem('airdropFormData', JSON.stringify({
-      wallet,
-      xUsername,
-      telegram,
-      tiktok: document.getElementById('tiktok').value.trim()
-    }));
+    const success = await this.saveAirdropData(wallet, xUsername, telegram, tiktok);
     
-    this.setStepState(1, 'completed');
-    this.setStepState(2, 'active');
-    
-    alert('Registration successful! You can now complete the tasks.');
+    if (success) {
+      localStorage.setItem('airdropFormSubmitted', 'true');
+      localStorage.setItem('airdropFormData', JSON.stringify({
+        wallet,
+        xUsername,
+        telegram,
+        tiktok
+      }));
+      
+      this.setStepState(1, 'completed');
+      this.setStepState(2, 'active');
+      
+      alert('Registration successful! You can now complete the tasks.');
+    } else {
+      alert('Error saving data. Please try again.');
+    }
   }
 
   setupTaskVerification() {
