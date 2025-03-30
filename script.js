@@ -48,13 +48,13 @@ const MetaFrogApp = {
         const section = this.getSectionFromHref(navLink.getAttribute('href'));
         this.showSection(section);
       }
-
-      // Formularz airdrop
-      if (e.target.closest('.airdrop-form')) {
-        e.preventDefault();
-        this.handleAirdropForm(e);
-      }
     });
+
+    // Formularz airdrop
+    const airdropForm = document.querySelector('.airdrop-form');
+    if (airdropForm) {
+      airdropForm.addEventListener('submit', (e) => this.handleAirdropForm(e));
+    }
 
     // Obsługa historii przeglądarki
     window.addEventListener('popstate', () => this.handleInitialRoute());
@@ -63,7 +63,7 @@ const MetaFrogApp = {
   // Obsługa formularza airdrop
   async handleAirdropForm(e) {
     e.preventDefault();
-    
+
     const wallet = document.getElementById('wallet').value.trim();
     const xUsername = document.getElementById('xUsername').value.trim();
     const telegram = document.getElementById('telegram').value.trim();
@@ -104,66 +104,21 @@ const MetaFrogApp = {
     try {
       // Zapisz do Firestore
       await this.db.collection('airdropParticipants').doc(wallet).set(submissionData);
-      
-      // Zmiana statusu kroków
-      this.updateStepStatus(1, 'completed');
-      this.updateStepStatus(2, 'active');
 
+      // Aktualizacja UI
+      this.advanceToStep(2);
       this.showAlert('Rejestracja udana! Możesz teraz wykonać zadania.', 'success');
-      
+      this.trackConversion();
+
     } catch (error) {
       console.error("Błąd zapisu do Firestore:", error);
       this.showAlert('Wystąpił błąd podczas przesyłania formularza. Proszę spróbować ponownie.', 'error');
     }
   },
 
-  // Funkcja aktualizująca status kroków
-  updateStepStatus(stepNumber, status) {
-    const stepElement = document.querySelector(`#step-${stepNumber}`);
-    
-    if (!stepElement) return;
-    
-    const stepTitle = stepElement.querySelector('.step-title');
-    const stepDescription = stepElement.querySelector('.step-description');
-    
-    if (status === 'active') {
-      stepElement.classList.add('active');
-      stepElement.classList.remove('completed');
-      stepTitle.innerText = `Step ${stepNumber} - Active`;
-      stepDescription.innerText = `In Progress...`;
-    } else if (status === 'completed') {
-      stepElement.classList.remove('active');
-      stepElement.classList.add('completed');
-      stepTitle.innerText = `Step ${stepNumber} - Completed`;
-      stepDescription.innerText = `Completed`;
-    }
-  },
-
-  // Sprawdzenie statusu weryfikacji
-  async checkVerificationStatus() {
-    const wallet = document.getElementById('wallet')?.value.trim();
-    if (!wallet) return;
-
-    try {
-      const doc = await this.db.collection('airdropParticipants').doc(wallet).get();
-      if (doc.exists) {
-        const data = doc.data();
-        
-        // Aktualizuj UI dla każdego zweryfikowanego zadania
-        for (const task in data.verificationStatus) {
-          if (data.verificationStatus[task]) {
-            this.updateVerificationUI(task);
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Błąd sprawdzania statusu:", error);
-    }
-  },
-
   // Walidacja adresu Solana
   isValidSolanaAddress(address) {
-    return address.length >= 32 && address.length <= 44 && 
+    return address.length >= 32 && address.length <= 44 &&
            /^[A-HJ-NP-Za-km-z1-9]*$/.test(address);
   },
 
@@ -179,7 +134,7 @@ const MetaFrogApp = {
     alertBox.className = `alert ${type}`;
     alertBox.textContent = message;
     document.body.appendChild(alertBox);
-    
+
     setTimeout(() => {
       alertBox.classList.add('fade-out');
       setTimeout(() => alertBox.remove(), 500);
@@ -192,12 +147,17 @@ const MetaFrogApp = {
     document.querySelectorAll('.section').forEach(section => {
       section.classList.remove('active');
     });
-    
+
     // Pokaż wybraną sekcję
     const section = document.getElementById(sectionId);
     if (section) {
       section.classList.add('active');
       window.location.hash = sectionId;
+
+      // Inicjalizacja sekcji airdrop
+      if (sectionId === 'airdrop') {
+        this.initAirdropSection();
+      }
     }
   },
 
@@ -207,9 +167,97 @@ const MetaFrogApp = {
     this.checkAirdropProgress();
   },
 
+  // Obsługa początkowego routingu
+  handleInitialRoute() {
+    const section = this.getSectionFromHref(window.location.hash) || 'home';
+    this.showSection(section);
+  },
+
+  // Pobranie nazwy sekcji z href
+  getSectionFromHref(href) {
+    return href.replace(/^#\/?/, '') || 'home';
+  },
+
+  // Aktualizacja kroków airdrop
+  advanceToStep(stepNumber) {
+    document.querySelectorAll('.step-card').forEach((card, index) => {
+      card.classList.remove('completed-step', 'active-step', 'pending-step');
+
+      if (index + 1 < stepNumber) {
+        card.classList.add('completed-step');
+      } else if (index + 1 === stepNumber) {
+        card.classList.add('active-step');
+      } else {
+        card.classList.add('pending-step');
+      }
+    });
+  },
+
+  // Animacja liczników
+  initCounters() {
+    this.animateCounter('participants-counter', 12500);
+    this.animateCounter('tokens-counter', 2500000);
+  },
+
+  animateCounter(elementId, target) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    let current = 0;
+    const increment = target / 100;
+    const timer = setInterval(() => {
+      current += increment;
+      element.textContent = Math.floor(current).toLocaleString();
+      if (current >= target) {
+        element.textContent = target.toLocaleString();
+        clearInterval(timer);
+      }
+    }, 20);
+  },
+
+  // Śledzenie konwersji
+  trackConversion() {
+    if (typeof gtag !== 'undefined') {
+      gtag('event', 'conversion', {
+        'send_to': 'AW-123456789/AbCdEfGhIjKlMnOpQrStUv'
+      });
+    }
+  },
+
   // Sprawdzenie postępu airdrop (możesz rozbudować)
   checkAirdropProgress() {
     // Tutaj możesz dodać logikę sprawdzania postępu
+  },
+
+  // Sprawdzenie statusu weryfikacji
+  async checkVerificationStatus() {
+    const wallet = document.getElementById('wallet')?.value.trim();
+    if (!wallet) return;
+
+    try {
+      const doc = await this.db.collection('airdropParticipants').doc(wallet).get();
+      if (doc.exists) {
+        const data = doc.data();
+
+        // Aktualizuj UI dla każdego zweryfikowanego zadania
+        for (const task in data.verificationStatus) {
+          if (data.verificationStatus[task]) {
+            this.updateVerificationUI(task);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Błąd sprawdzania statusu:", error);
+    }
+  },
+
+  // Aktualizacja UI po weryfikacji
+  updateVerificationUI(taskName) {
+    const statusElement = document.querySelector(`.${taskName}-verification`);
+    if (statusElement) {
+      statusElement.innerHTML = '<i class="fas fa-check-circle"></i> Zweryfikowano';
+      statusElement.style.color = '#4CAF50';
+    }
   }
 };
 
@@ -221,4 +269,10 @@ document.addEventListener('DOMContentLoaded', () => {
 // Globalna obsługa błędów
 window.addEventListener('error', (event) => {
   console.error('Globalny błąd:', event.error);
+  if (typeof gtag !== 'undefined') {
+    gtag('event', 'exception', {
+      description: event.error.message,
+      fatal: true
+    });
+  }
 });
