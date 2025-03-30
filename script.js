@@ -1,31 +1,31 @@
-/**
- * MetaFrog - Core Functionality
- * Includes:
- * - Airdrop progress system
- * - Form validation and Firebase integration
- * - Basic navigation
- */
+// Importujemy odpowiednie funkcje z SDK Firebase
+import { initializeApp } from "firebase/app";
+import { getDatabase, ref, set, get, child, update } from "firebase/database";
+import { getAnalytics } from "firebase/analytics";
+
+// Konfiguracja Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyAR6Ha8baMX5EPsPVayTno0e0QBRqZrmco",
+  authDomain: "metafrog-airdrop.firebaseapp.com",
+  databaseURL: "https://metafrog-airdrop-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "metafrog-airdrop",
+  storageBucket: "metafrog-airdrop.firebasestorage.app",
+  messagingSenderId: "546707737127",
+  appId: "1:546707737127:web:67956ae63ffef3ebeddc02",
+  measurementId: "G-2Z78VYL739"
+};
+
+// Inicjalizacja Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+const db = getDatabase(app);
+
+// Klasa aplikacji MetaFrogApp
 class MetaFrogApp {
   constructor() {
-    this.firebaseConfig = {
-      apiKey: "AIzaSyAR6Ha8baMX5EPsPVayTno0e0QBRqZrmco",
-      authDomain: "metafrog-airdrop.firebaseapp.com",
-      projectId: "metafrog-airdrop",
-      storageBucket: "metafrog-airdrop.appspot.com",
-      messagingSenderId: "546707737127",
-      appId: "1:546707737127:web:67956ae63ffef3ebeddc02"
-    };
-    
-    this.init();
-  }
-
-  async init() {
-    firebase.initializeApp(this.firebaseConfig);
-    this.db = firebase.database();
-
     this.setupNavigation();
-    this.initAirdrop();
     this.setupEventListeners();
+    this.checkSubmissionStatus();
   }
 
   // ======================
@@ -50,24 +50,51 @@ class MetaFrogApp {
     if (section) section.classList.add('active');
   }
 
-  // ==================
+  // ======================
   // AIRDROP MANAGEMENT
-  // ==================
-  initAirdrop() {
-    this.setupAirdropForm();
-    this.checkSubmissionStatus();
+  // ======================
+  checkSubmissionStatus() {
+    if (localStorage.getItem('mfrogAirdropSubmitted') === 'true') {
+      this.updateUIAfterSubmission();
+    } else {
+      this.updateStepStatus(1, "ACTIVE");
+      this.updateStepStatus(2, "PENDING");
+      this.updateStepStatus(3, "PENDING");
+    }
   }
 
-  setupAirdropForm() {
+  // Zaktualizowanie statusu kroku
+  updateStepStatus(step, status) {
+    const stepElement = document.getElementById(`step${step}`);
+    const statusElement = document.getElementById(`status${step}`);
+
+    if (status === 'ACTIVE') {
+      stepElement.classList.add('active-step');
+      stepElement.classList.remove('pending-step', 'completed-step');
+      statusElement.textContent = 'ACTIVE';
+    } else if (status === 'PENDING') {
+      stepElement.classList.add('pending-step');
+      stepElement.classList.remove('active-step', 'completed-step');
+      statusElement.textContent = 'PENDING';
+    } else if (status === 'COMPLETED') {
+      stepElement.classList.add('completed-step');
+      stepElement.classList.remove('active-step', 'pending-step');
+      statusElement.textContent = 'COMPLETED';
+    }
+  }
+
+  // Formularz airdrop
+  setupEventListeners() {
     const form = document.getElementById('airdropForm');
-    if (!form) return;
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      await this.handleAirdropSubmission();
-    });
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await this.handleAirdropSubmission();
+      });
+    }
   }
 
+  // Obsługuje przesyłanie formularza
   async handleAirdropSubmission() {
     const formData = {
       wallet: document.getElementById('wallet').value.trim(),
@@ -75,24 +102,26 @@ class MetaFrogApp {
       telegram: document.getElementById('telegram').value.trim(),
       tiktok: document.getElementById('tiktok').value.trim() || 'Not provided',
       timestamp: new Date().toISOString(),
-      verified: false // Dodajemy, że zgłoszenie nie jest jeszcze zweryfikowane
+      status: 'registered'
     };
 
     if (!this.validateForm(formData)) return;
 
     try {
-      const newSubmissionRef = this.db.ref('airdrops').push();
-      await newSubmissionRef.set(formData);
+      const newSubmissionRef = ref(db, 'airdrops/' + Date.now());
+      await set(newSubmissionRef, formData);
       this.updateUIAfterSubmission();
+      this.saveSubmissionToLocalStorage();
     } catch (error) {
       console.error("Submission error:", error);
       alert('Error submitting form. Please try again.');
     }
   }
 
+  // Walidacja formularza
   validateForm(data) {
     if (!data.wallet || data.wallet.length < 32 || data.wallet.length > 44) {
-      alert('Invalid SOL wallet address (32-44 characters required)');
+      alert('Invalid wallet address (32-44 characters required)');
       return false;
     }
 
@@ -104,23 +133,23 @@ class MetaFrogApp {
     return true;
   }
 
+  // Zaktualizowanie UI po wysłaniu formularza
   updateUIAfterSubmission() {
-    document.getElementById('step1').classList.remove('active-step');
-    document.getElementById('step1').classList.add('completed-step');
-    document.getElementById('status1').textContent = 'COMPLETED';
-    
-    document.getElementById('step2').classList.remove('pending-step');
-    document.getElementById('step2').classList.add('active-step');
-    document.getElementById('status2').textContent = 'ACTIVE';
-    
+    this.updateStepStatus(1, 'COMPLETED');
+    this.updateStepStatus(2, 'ACTIVE');
     alert('Registration successful! Complete tasks to qualify.');
   }
 
-  // =====================
-  // TASK VERIFICATION
-  // =====================
-  setupEventListeners() {
-    // DexScreener verification
+  // Zapisanie statusu w LocalStorage
+  saveSubmissionToLocalStorage() {
+    localStorage.setItem('mfrogAirdropSubmitted', 'true');
+  }
+
+  // ======================
+  // TASK VERIFICATION (opcjonalnie, jeżeli chcesz dodać weryfikację zadań)
+  // ======================
+  setupTaskVerification() {
+    // Przykładowe kliknięcie na link do weryfikacji zadania
     const dexscreenerLink = document.querySelector('.dexscreener-link');
     if (dexscreenerLink) {
       dexscreenerLink.addEventListener('click', () => {
@@ -128,7 +157,7 @@ class MetaFrogApp {
       });
     }
 
-    // Referral system
+    // Przykładowy link do systemu poleceń
     const referralButton = document.querySelector('.task-link[onclick="copyReferralLink()"]');
     if (referralButton) {
       referralButton.addEventListener('click', (e) => {
@@ -138,6 +167,7 @@ class MetaFrogApp {
     }
   }
 
+  // Weryfikacja zadania (jeśli jest)
   markTaskAsVerified(taskType) {
     const statusElement = document.querySelector(`.${taskType}-verification`);
     if (statusElement) {
@@ -146,6 +176,7 @@ class MetaFrogApp {
     }
   }
 
+  // Kopiowanie linku do poleceń
   copyReferralLink() {
     const referralId = localStorage.getItem('mfrogReferralId') || this.generateReferralId();
     const referralLink = `${window.location.href}?ref=${referralId}`;
@@ -153,7 +184,7 @@ class MetaFrogApp {
     navigator.clipboard.writeText(referralLink)
       .then(() => alert('Referral link copied!'))
       .catch(() => {
-        // Fallback for older browsers
+        // Fallback dla starszych przeglądarek
         const textarea = document.createElement('textarea');
         textarea.value = referralLink;
         document.body.appendChild(textarea);
@@ -164,44 +195,15 @@ class MetaFrogApp {
       });
   }
 
+  // Generowanie ID do polecenia
   generateReferralId() {
     const id = 'mfrog-' + Math.random().toString(36).substr(2, 9);
     localStorage.setItem('mfrogReferralId', id);
     return id;
   }
-
-  // ======================
-  // UI CONTROL (Steps Status)
-  // ======================
-
-  updateStepStatus(step, status) {
-    document.getElementById(`status${step}`).textContent = status;
-    const stepCard = document.getElementById(`step${step}`);
-    if (status === "ACTIVE") {
-        stepCard.classList.add('active-step');
-        stepCard.classList.remove('completed-step', 'pending-step');
-    } else if (status === "COMPLETED") {
-        stepCard.classList.add('completed-step');
-        stepCard.classList.remove('active-step', 'pending-step');
-    } else if (status === "PENDING") {
-        stepCard.classList.add('pending-step');
-        stepCard.classList.remove('active-step', 'completed-step');
-    }
-  }
-
-  // Inicjalizacja statusów przy starcie
-  checkSubmissionStatus() {
-    if (localStorage.getItem('mfrogAirdropSubmitted') === 'true') {
-      this.updateUIAfterSubmission();
-    } else {
-      this.updateStepStatus(1, "ACTIVE");
-      this.updateStepStatus(2, "PENDING");
-      this.updateStepStatus(3, "PENDING");
-    }
-  }
 }
 
-// Initialize the app
+// Inicjalizowanie aplikacji po załadowaniu strony
 document.addEventListener('DOMContentLoaded', () => {
   new MetaFrogApp();
 });
