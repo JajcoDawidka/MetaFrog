@@ -1,6 +1,7 @@
-// Import Firebase (wersja modularna - działająca bezpośrednio w przeglądarce)
+// Import Firebase (wersja modularna)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import { getDatabase, ref, push, onValue, update } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
 // Konfiguracja Firebase (twoje dane)
 const firebaseConfig = {
@@ -17,18 +18,34 @@ const firebaseConfig = {
 // Inicjalizacja Firebase
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
+const auth = getAuth(app);
 
 class MetaFrogApp {
   constructor() {
     this.validSections = ['home', 'games', 'airdrop', 'staking', 'about'];
+    this.initFirebaseAuth();
     this.init();
+  }
+
+  async initFirebaseAuth() {
+    try {
+      await signInAnonymously(auth);
+      console.log("Zalogowano anonimowo do Firebase");
+    } catch (error) {
+      console.error("Błąd logowania do Firebase:", error);
+      // Nawigacja działa nawet bez połączenia z Firebase
+    }
   }
 
   init() {
     this.setupNavigation();
     this.handleInitialSection();
-    this.initAirdrop();
     this.setupEventListeners();
+    
+    // Inicjalizacja airdrop tylko jeśli jest na stronie
+    if (window.location.pathname.includes('airdrop')) {
+      this.initAirdrop();
+    }
   }
 
   // ======================
@@ -69,10 +86,6 @@ class MetaFrogApp {
     }
 
     this.updateNavStyle(section);
-
-    if (section === 'airdrop') {
-      this.initAirdrop();
-    }
   }
 
   // Helper methods
@@ -107,6 +120,11 @@ class MetaFrogApp {
   // ======================
   async saveAirdropData(wallet, xUsername, telegram, tiktok) {
     try {
+      // Sprawdź czy jest połączenie z Firebase
+      if (!auth.currentUser) {
+        throw new Error("Brak połączenia z bazą danych");
+      }
+
       await push(ref(database, 'airdrops'), {
         wallet,
         xUsername,
@@ -122,7 +140,11 @@ class MetaFrogApp {
       });
       return true;
     } catch (error) {
-      console.error("Firebase save error:", error);
+      console.error("Błąd zapisu:", error);
+      // Fallback do localStorage jeśli Firebase nie działa
+      localStorage.setItem('airdropFormData', JSON.stringify({
+        wallet, xUsername, telegram, tiktok
+      }));
       return false;
     }
   }
@@ -203,19 +225,11 @@ class MetaFrogApp {
     
     if (success) {
       localStorage.setItem('airdropFormSubmitted', 'true');
-      localStorage.setItem('airdropFormData', JSON.stringify({
-        wallet,
-        xUsername,
-        telegram,
-        tiktok
-      }));
-      
       this.setStepState(1, 'completed');
       this.setStepState(2, 'active');
-      
-      alert('Rejestracja udana! Możesz teraz wykonać zadania.');
+      alert('Dziękujemy! Twoje zgłoszenie zostało zapisane.');
     } else {
-      alert('Błąd zapisu danych. Spróbuj ponownie.');
+      alert('Dane zapisane lokalnie. Połącz się z internetem, aby wysłać do bazy.');
     }
   }
 
@@ -295,34 +309,41 @@ document.addEventListener('DOMContentLoaded', () => {
   window.copyReferralLink = () => window.app.copyReferralLink();
 });
 
-// ======================
 // ADMIN PANEL FUNCTIONS
-// ======================
 if (window.location.pathname.includes('admin.html')) {
   function loadAirdrops() {
     onValue(ref(database, 'airdrops'), (snapshot) => {
       const data = snapshot.val();
       let html = "";
       
-      for (let key in data) {
-        const entry = data[key];
-        html += `
-          <tr>
-            <td>${entry.wallet}</td>
-            <td>${entry.xUsername}</td>
-            <td>${entry.telegram}</td>
-            <td>${entry.tiktok || "-"}</td>
-            <td>${new Date(entry.date).toLocaleString()}</td>
-            <td>
-              <button onclick="verifyEntry('${key}')" class="verify-btn">
-                ${entry.verified ? '✓ Zweryfikowano' : 'Zweryfikuj'}
-              </button>
-            </td>
-          </tr>
-        `;
+      if (data) {
+        for (let key in data) {
+          const entry = data[key];
+          html += `
+            <tr>
+              <td>${entry.wallet}</td>
+              <td>${entry.xUsername}</td>
+              <td>${entry.telegram}</td>
+              <td>${entry.tiktok || "-"}</td>
+              <td>${new Date(entry.date).toLocaleString()}</td>
+              <td>
+                <button onclick="verifyEntry('${key}')" class="verify-btn">
+                  ${entry.verified ? '✓ Zweryfikowano' : 'Zweryfikuj'}
+                </button>
+              </td>
+            </tr>
+          `;
+        }
+      } else {
+        html = "<tr><td colspan='6'>Brak zgłoszeń</td></tr>";
       }
       
       document.getElementById("airdropList").innerHTML = html;
+    }, (error) => {
+      console.error("Błąd odczytu danych:", error);
+      document.getElementById("airdropList").innerHTML = `
+        <tr><td colspan='6'>Błąd połączenia z bazą danych</td></tr>
+      `;
     });
   }
 
@@ -330,11 +351,10 @@ if (window.location.pathname.includes('admin.html')) {
     if (confirm("Czy na pewno chcesz zweryfikować to zgłoszenie?")) {
       update(ref(database, `airdrops/${key}`), { verified: true })
         .then(() => alert("Zgłoszenie zweryfikowane!"))
-        .catch(error => alert("Błąd: " + error));
+        .catch(error => alert("Błąd: " + error.message));
     }
   };
 
-  // Wyszukiwarka
   document.getElementById("searchInput")?.addEventListener("input", (e) => {
     const searchTerm = e.target.value.toLowerCase();
     const rows = document.querySelectorAll("#airdropTable tbody tr");
@@ -350,6 +370,13 @@ if (window.location.pathname.includes('admin.html')) {
     });
   });
 
-  // Ładowanie danych przy starcie
-  window.onload = loadAirdrops;
+  // Init admin panel
+  signInAnonymously(auth)
+    .then(() => loadAirdrops())
+    .catch(error => {
+      console.error("Błąd logowania admina:", error);
+      document.getElementById("airdropList").innerHTML = `
+        <tr><td colspan='6'>Błąd autoryzacji</td></tr>
+      `;
+    });
 }
