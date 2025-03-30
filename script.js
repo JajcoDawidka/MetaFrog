@@ -1,6 +1,6 @@
 /**
  * MetaFrog - Kompletny skrypt zarządzający stroną
- * Wersja 2.0 - Pełna integracja z Firebase, nawigacja i funkcje airdrop
+ * Wersja 3.0 - Pełna integracja z Firebase i poprawne zarządzanie krokami airdrop
  */
 
 // Konfiguracja Firebase
@@ -16,14 +16,16 @@ const firebaseConfig = {
 
 // Główny obiekt aplikacji
 const MetaFrogApp = {
+  currentUserWallet: null,
+  db: null,
+  
   // Inicjalizacja aplikacji
   init() {
     this.initializeFirebase();
     this.setupEventListeners();
     this.handleInitialRoute();
     this.initCounters();
-    this.checkVerificationStatus();
-    console.log("Aplikacja MetaFrog została zainicjalizowana");
+    console.log("MetaFrog App initialized");
   },
 
   // Inicjalizacja Firebase
@@ -31,10 +33,14 @@ const MetaFrogApp = {
     try {
       firebase.initializeApp(firebaseConfig);
       this.db = firebase.firestore();
-      console.log("Firebase zostało pomyślnie zainicjalizowane");
+      
+      // Obserwuj zmiany w danych użytkownika
+      this.monitorUserProgress();
+      
+      console.log("Firebase initialized successfully");
     } catch (error) {
-      console.error("Błąd inicjalizacji Firebase:", error);
-      this.showAlert("Błąd połączenia z serwerem. Spróbuj odświeżyć stronę.", "error");
+      console.error("Firebase initialization error:", error);
+      this.showAlert("Connection error. Please refresh the page.", "error");
     }
   },
 
@@ -50,7 +56,7 @@ const MetaFrogApp = {
       }
 
       // Kopiowanie linku polecającego
-      if (e.target.closest('.task-link') && e.target.closest('[onclick="copyReferralLink()"]')) {
+      if (e.target.closest('.copy-referral-btn')) {
         e.preventDefault();
         this.copyReferralLink();
       }
@@ -58,7 +64,7 @@ const MetaFrogApp = {
       // Weryfikacja DexScreener
       if (e.target.closest('.dexscreener-link')) {
         e.preventDefault();
-        this.verifyDexScreener(e);
+        this.verifyDexScreener();
       }
     });
 
@@ -83,25 +89,25 @@ const MetaFrogApp = {
 
     // Walidacja pól wymaganych
     if (!wallet || !xUsername || !telegram) {
-      this.showAlert('Proszę wypełnić wszystkie wymagane pola', 'error');
+      this.showAlert('Please fill all required fields', 'error');
       return;
     }
 
-    // Walidacja adresu portfela Solana
+    // Walidacja adresu Solana
     if (!this.isValidSolanaAddress(wallet)) {
-      this.showAlert('Proszę podać prawidłowy adres portfela Solana', 'error');
+      this.showAlert('Please enter a valid Solana wallet address', 'error');
       return;
     }
 
-    // Przygotowanie danych do wysłania
+    // Przygotowanie danych
     const submissionData = {
       wallet,
-      xUsername: xUsername.startsWith('@') ? xUsername : `@${xUsername}`,
-      telegram: telegram.startsWith('@') ? telegram : `@${telegram}`,
-      tiktok: tiktok ? (tiktok.startsWith('@') ? tiktok : `@${tiktok}`) : 'N/A',
+      xUsername: this.formatUsername(xUsername),
+      telegram: this.formatUsername(telegram),
+      tiktok: this.formatUsername(tiktok, false),
       timestamp: firebase.firestore.FieldValue.serverTimestamp(),
       userAgent: navigator.userAgent,
-      completedTasks: [],
+      completedTasks: ['registration'],
       status: 'registered',
       referralCode: this.getReferralCodeFromURL() || 'direct',
       verificationStatus: {
@@ -110,93 +116,127 @@ const MetaFrogApp = {
         tiktok: false,
         dexscreener: false
       },
-      points: 0
+      points: 10
     };
 
     try {
       // Zapisz do Firestore
       await this.db.collection('airdropParticipants').doc(wallet).set(submissionData);
       
+      // Ustaw aktualnego użytkownika
+      this.currentUserWallet = wallet;
+      localStorage.setItem('registeredWallet', wallet);
+      
       // Aktualizacja UI
-      this.advanceToStep(2);
-      this.showAlert('Rejestracja udana! Możesz teraz wykonać zadania.', 'success');
+      this.updateProgress(2);
+      this.showAlert('Registration successful! Complete tasks now.', 'success');
+      
+      // Śledzenie konwersji
       this.trackConversion();
       
     } catch (error) {
-      console.error("Błąd zapisu do Firestore:", error);
-      this.showAlert('Wystąpił błąd podczas przesyłania formularza. Proszę spróbować ponownie.', 'error');
+      console.error("Error saving data:", error);
+      this.showAlert('Error saving data. Please try again.', 'error');
+    }
+  },
+
+  // Monitorowanie postępu użytkownika
+  monitorUserProgress() {
+    const wallet = localStorage.getItem('registeredWallet');
+    if (!wallet) return;
+
+    this.db.collection('airdropParticipants').doc(wallet)
+      .onSnapshot((doc) => {
+        if (doc.exists) {
+          const data = doc.data();
+          this.updateUIBasedOnProgress(data);
+        }
+      });
+  },
+
+  // Aktualizacja UI na podstawie postępu
+  updateUIBasedOnProgress(userData) {
+    // Ustaw odpowiedni krok
+    if (userData.completedTasks.includes('registration')) {
+      this.updateProgress(2);
+    }
+    
+    // Aktualizuj status zadań
+    this.updateTaskStatus('twitter', userData.verificationStatus?.twitter);
+    this.updateTaskStatus('telegram', userData.verificationStatus?.telegram);
+    this.updateTaskStatus('tiktok', userData.verificationStatus?.tiktok);
+    this.updateTaskStatus('dexscreener', userData.verificationStatus?.dexscreener);
+  },
+
+  // Aktualizacja statusu zadania
+  updateTaskStatus(taskName, isCompleted) {
+    const statusElement = document.querySelector(`.${taskName}-verification`);
+    if (!statusElement) return;
+
+    if (isCompleted) {
+      statusElement.innerHTML = '<i class="fas fa-check-circle"></i> Verified';
+      statusElement.style.color = '#4CAF50';
     }
   },
 
   // Weryfikacja zadania DexScreener
-  async verifyDexScreener(e) {
-    const wallet = document.getElementById('wallet')?.value.trim();
-    
-    if (!wallet) {
-      this.showAlert('Proszę najpierw podać adres portfela', 'error');
+  async verifyDexScreener() {
+    if (!this.currentUserWallet) {
+      this.showAlert('Please complete registration first', 'error');
       return;
     }
 
     try {
-      await this.db.collection('airdropParticipants').doc(wallet).update({
+      await this.db.collection('airdropParticipants').doc(this.currentUserWallet).update({
         'verificationStatus.dexscreener': true,
         'completedTasks': firebase.firestore.FieldValue.arrayUnion('dexscreener'),
         'points': firebase.firestore.FieldValue.increment(10)
       });
       
-      this.updateVerificationUI('dexscreener');
-      this.showAlert('Zadanie DexScreener zweryfikowane!', 'success');
+      this.showAlert('DexScreener task verified!', 'success');
     } catch (error) {
-      console.error("Błąd weryfikacji DexScreener:", error);
-      this.showAlert('Błąd weryfikacji. Spróbuj ponownie.', 'error');
+      console.error("Verification error:", error);
+      this.showAlert('Verification failed. Please try again.', 'error');
     }
   },
 
-  // Aktualizacja UI po weryfikacji
-  updateVerificationUI(taskName) {
-    const statusElement = document.querySelector(`.${taskName}-verification`);
-    if (statusElement) {
-      statusElement.innerHTML = '<i class="fas fa-check-circle"></i> Zweryfikowano';
-      statusElement.style.color = '#4CAF50';
-    }
-  },
-
-  // Sprawdzenie statusu weryfikacji
-  async checkVerificationStatus() {
-    const wallet = document.getElementById('wallet')?.value.trim();
-    if (!wallet) return;
-
-    try {
-      const doc = await this.db.collection('airdropParticipants').doc(wallet).get();
-      if (doc.exists) {
-        const data = doc.data();
-        
-        // Aktualizuj UI dla każdego zweryfikowanego zadania
-        for (const task in data.verificationStatus) {
-          if (data.verificationStatus[task]) {
-            this.updateVerificationUI(task);
-          }
-        }
+  // Aktualizacja kroków airdrop
+  updateProgress(currentStep) {
+    const steps = document.querySelectorAll('.step-card');
+    
+    steps.forEach((step, index) => {
+      step.classList.remove('completed-step', 'active-step', 'pending-step');
+      
+      if (index + 1 < currentStep) {
+        step.classList.add('completed-step');
+      } else if (index + 1 === currentStep) {
+        step.classList.add('active-step');
+      } else {
+        step.classList.add('pending-step');
       }
-    } catch (error) {
-      console.error("Błąd sprawdzania statusu:", error);
-    }
+    });
   },
 
   // Kopiowanie linku polecającego
   copyReferralLink() {
     const referralLink = `${window.location.origin}${window.location.pathname}?ref=${this.generateReferralCode()}`;
     navigator.clipboard.writeText(referralLink)
-      .then(() => this.showAlert('Link polecający skopiowany do schowka!', 'success'))
+      .then(() => this.showAlert('Referral link copied!', 'success'))
       .catch(err => {
-        console.error('Błąd kopiowania:', err);
-        this.showAlert('Błąd kopiowania linku', 'error');
+        console.error('Copy error:', err);
+        this.showAlert('Failed to copy link', 'error');
       });
   },
 
   // Generowanie kodu polecającego
   generateReferralCode() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
+  },
+
+  // Formatowanie nazwy użytkownika
+  formatUsername(username, required = true) {
+    if (!username && !required) return 'N/A';
+    return username.startsWith('@') ? username : `@${username}`;
   },
 
   // Walidacja adresu Solana
@@ -246,8 +286,14 @@ const MetaFrogApp = {
 
   // Inicjalizacja sekcji airdrop
   initAirdropSection() {
-    this.checkVerificationStatus();
-    this.checkAirdropProgress();
+    const wallet = localStorage.getItem('registeredWallet');
+    
+    if (wallet) {
+      this.currentUserWallet = wallet;
+      this.updateProgress(2); // Użytkownik już zarejestrowany - krok 2 aktywny
+    } else {
+      this.updateProgress(1); // Nowy użytkownik - krok 1 aktywny
+    }
   },
 
   // Obsługa początkowego routingu
@@ -261,27 +307,13 @@ const MetaFrogApp = {
     return href.replace(/^#\/?/, '') || 'home';
   },
 
-  // Aktualizacja kroków airdrop
-  advanceToStep(stepNumber) {
-    document.querySelectorAll('.step-card').forEach((card, index) => {
-      card.classList.remove('completed-step', 'active-step', 'pending-step');
-      
-      if (index + 1 < stepNumber) {
-        card.classList.add('completed-step');
-      } else if (index + 1 === stepNumber) {
-        card.classList.add('active-step');
-      } else {
-        card.classList.add('pending-step');
-      }
-    });
-  },
-
-  // Animacja liczników
+  // Inicjalizacja liczników
   initCounters() {
     this.animateCounter('participants-counter', 12500);
     this.animateCounter('tokens-counter', 2500000);
   },
 
+  // Animacja liczników
   animateCounter(elementId, target) {
     const element = document.getElementById(elementId);
     if (!element) return;
@@ -305,11 +337,6 @@ const MetaFrogApp = {
         'send_to': 'AW-123456789/AbCdEfGhIjKlMnOpQrStUv'
       });
     }
-  },
-
-  // Sprawdzenie postępu airdrop (możesz rozbudować)
-  checkAirdropProgress() {
-    // Tutaj możesz dodać logikę sprawdzania postępu
   }
 };
 
@@ -320,7 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Globalna obsługa błędów
 window.addEventListener('error', (event) => {
-  console.error('Globalny błąd:', event.error);
+  console.error('Global error:', event.error);
   if (typeof gtag !== 'undefined') {
     gtag('event', 'exception', {
       description: event.error.message,
