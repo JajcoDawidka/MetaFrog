@@ -732,6 +732,7 @@ nav a:hover {
     transform: rotate(45deg);
 }
 
+
 .required-task .task-icon {
     background: rgba(138, 43, 226, 0.2);
     color: #8a2be2;
