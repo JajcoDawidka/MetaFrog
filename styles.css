@@ -409,11 +409,20 @@ nav a:hover {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
-.step-card.active-step {
-    border-color: #8a2be2;
-    background: linear-gradient(135deg, #1a1a1a, #2a0a4a);
-    transform: translateY(-10px);
-    box-shadow: 0 10px 25px rgba(138, 43, 226, 0.3);
+.step-card.completed {
+    border-left: 4px solid #4CAF50;
+    background: rgba(76, 175, 80, 0.1);
+}
+
+.step-card.active {
+    border-left: 4px solid #8a2be2;
+    background: rgba(138, 43, 226, 0.1);
+}
+
+.step-card.pending {
+    opacity: 0.7;
+    background: rgba(255,255,255,0.02);
+    border-left: 4px solid #9E9E9E;
 }
 
 .step-number {
@@ -432,10 +441,19 @@ nav a:hover {
     transition: all 0.3s ease;
 }
 
-.active-step .step-number {
+.step-card.completed .step-number {
+    background: #4CAF50;
+    border-color: #4CAF50;
+}
+
+.step-card.active .step-number {
     background: #8a2be2;
     border-color: #a855f7;
-    transform: scale(1.1);
+}
+
+.step-card.pending .step-number {
+    background: #9E9E9E;
+    border-color: #9E9E9E;
 }
 
 .step-card h3 {
@@ -445,9 +463,16 @@ nav a:hover {
     transition: all 0.3s ease;
 }
 
-.active-step h3 {
-    color: #fff;
-    text-shadow: 0 0 8px rgba(138, 43, 226, 0.5);
+.step-card.completed h3 {
+    color: #4CAF50;
+}
+
+.step-card.active h3 {
+    color: #8a2be2;
+}
+
+.step-card.pending h3 {
+    color: #9E9E9E;
 }
 
 .step-card p {
@@ -457,7 +482,7 @@ nav a:hover {
     transition: all 0.3s ease;
 }
 
-.active-step p {
+.step-card.active p {
     color: #ccc;
 }
 
@@ -474,9 +499,19 @@ nav a:hover {
     transition: all 0.3s ease;
 }
 
-.active-step .step-status {
+.step-card.completed .step-status {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4CAF50;
+}
+
+.step-card.active .step-status {
     background: rgba(138, 43, 226, 0.2);
     color: #8a2be2;
+}
+
+.step-card.pending .step-status {
+    background: rgba(158, 158, 158, 0.2);
+    color: #9E9E9E;
 }
 
 .step-connector {
@@ -497,11 +532,11 @@ nav a:hover {
     left: 0;
     height: 100%;
     width: 0;
-    background: linear-gradient(90deg, #8a2be2, #4b0082);
+    background: linear-gradient(90deg, #4CAF50, #8a2be2);
     transition: width 0.8s ease;
 }
 
-.active-step {
+.step-card.active {
     animation: pulse-glow 2s infinite;
 }
 
@@ -566,7 +601,7 @@ nav a:hover {
     left: 0;
     height: 100%;
     width: 33%; /* Domyślnie pokazuje 1/3 paska dla pierwszego kroku */
-    background: linear-gradient(90deg, #8a2be2, #4b0082);
+    background: linear-gradient(90deg, #4CAF50, #8a2be2);
     transition: width 0.8s ease;
 }
 
