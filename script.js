@@ -225,3 +225,11 @@ document.querySelectorAll('.task-link').forEach(link => {
     });
   }
 });
+
+// Na końcu pliku
+console.log('MetaFrog initialized');
+if (typeof firebase !== 'undefined') {
+  console.log('Firebase loaded successfully');
+} else {
+  console.warn('Firebase not loaded');
+}
