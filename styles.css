@@ -411,18 +411,28 @@ nav a:hover {
 
 .step-card.completed {
     border-left: 4px solid #4CAF50;
-    background: rgba(76, 175, 80, 0.1);
+    background: rgba(76, 175, 80, 0.2); /* Zwiększ kontrast tła */
+    color: #4CAF50; /* Tekst na zielono */
 }
 
 .step-card.active {
     border-left: 4px solid #8a2be2;
-    background: rgba(138, 43, 226, 0.1);
+    background: rgba(138, 43, 226, 0.2); /* Zwiększ kontrast tła */
+    color: #8a2be2; /* Tekst na fioletowo */
+    box-shadow: 0 4px 10px rgba(138, 43, 226, 0.3); /* Dodaj efekt podświetlenia */
 }
 
 .step-card.pending {
     opacity: 0.7;
-    background: rgba(255,255,255,0.02);
+    background: rgba(255,255,255,0.05); /* Jaśniejsze tło */
     border-left: 4px solid #9E9E9E;
+    color: #9E9E9E; /* Tekst w kolorze szarym */
+}
+
+/* Opcjonalnie: dodanie efektu hover dla wszystkich kroków */
+.step-card:hover {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    transform: scale(1.05); /* Powiększenie na hover */
 }
 
 .step-number {
