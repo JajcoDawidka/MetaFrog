@@ -147,12 +147,13 @@ const MetaFrogApp = {
     const taskCompleted = localStorage.getItem('mfrog_tasks_completed') === 'true';
 
     document.querySelectorAll('.step-card').forEach((step, index) => {
+      // Update step based on registration and task completion
       if (index === 0) {
-        step.className = `step-card ${registered ? 'completed' : 'active'}`;
+        step.className = `step-card ${registered ? 'completed' : 'active'}`;  // Registration
       } else if (index === 1) {
-        step.className = `step-card ${taskCompleted ? 'completed' : 'active'}`;
+        step.className = `step-card ${taskCompleted ? 'completed' : 'active'}`;  // Tasks
       } else if (index === 2) {
-        step.className = `step-card ${taskCompleted ? 'completed' : 'pending'}`;
+        step.className = `step-card ${taskCompleted ? 'completed' : 'pending'}`;  // Airdrop Completion
       }
     });
   },
