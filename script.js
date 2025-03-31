@@ -144,10 +144,16 @@ const MetaFrogApp = {
 
   updateSteps() {
     const registered = localStorage.getItem('mfrog_registered');
+    const taskCompleted = localStorage.getItem('mfrog_tasks_completed') === 'true';
+
     document.querySelectorAll('.step-card').forEach((step, index) => {
-      step.className = `step-card ${
-        registered ? (index === 0 ? 'completed' : index === 1 ? 'active' : 'pending') 
-                   : (index === 0 ? 'active' : 'pending')}`;
+      if (index === 0) {
+        step.className = `step-card ${registered ? 'completed' : 'active'}`;
+      } else if (index === 1) {
+        step.className = `step-card ${taskCompleted ? 'completed' : 'active'}`;
+      } else if (index === 2) {
+        step.className = `step-card ${taskCompleted ? 'completed' : 'pending'}`;
+      }
     });
   },
 
