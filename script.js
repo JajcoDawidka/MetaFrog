@@ -1,9 +1,9 @@
 /**
  * MetaFrog - Final Working Version
- * Compatible with Vercel Deployment
+ * Full Firebase Integration
  */
 
-// Firebase configuration - ensure all URLs are HTTPS
+// Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyAR6Ha8baMX5EPsPVayTno0e0QBRqZrmco",
   authDomain: "metafrog-airdrop.firebaseapp.com",
@@ -16,45 +16,42 @@ const firebaseConfig = {
 };
 
 const MetaFrogApp = {
-  async initialize() {
+  isProcessing: false,
+
+  async init() {
     try {
-      // Load Firebase only if not already loaded
-      if (typeof firebase === 'undefined') {
-        await this.loadDependencies();
-      }
-
       // Initialize Firebase
-      firebase.initializeApp(firebaseConfig);
-      this.db = firebase.firestore();
-      this.realtimeDb = firebase.database();
-
+      await this.loadFirebase();
+      
       // Setup application
       this.setupNavigation();
       this.setupAirdropForm();
       this.initializeSteps();
-
+      
       // Show initial section
       this.showSection(window.location.hash.substring(1) || 'home');
-
-      return true;
+      
     } catch (error) {
       console.error('Initialization error:', error);
       this.showEmergencyMode();
-      return false;
     }
   },
 
-  async loadDependencies() {
-    const firebaseSDK = [
-      'https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js',
-      'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js',
-      'https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js'
-    ];
+  async loadFirebase() {
+    // Load Firebase SDK if not already loaded
+    if (typeof firebase === 'undefined') {
+      await this.loadScript('https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js');
+      await this.loadScript('https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js');
+      await this.loadScript('https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js');
+    }
 
-    await Promise.all(firebaseSDK.map(url => this.loadScript(url)));
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    this.db = app.firestore();
+    this.realtimeDb = app.database();
   },
 
-  // Navigation system
+  // Navigation
   setupNavigation() {
     document.querySelectorAll('nav a').forEach(link => {
       link.addEventListener('click', (e) => {
@@ -84,21 +81,20 @@ const MetaFrogApp = {
   setupAirdropForm() {
     const form = document.querySelector('.airdrop-form');
     if (form) {
-      form.addEventListener('submit', async (e) => {
+      form.addEventListener('submit', (e) => {
         e.preventDefault();
-        await this.processForm(e.target);
+        this.handleFormSubmit(e.target);
       });
     }
   },
 
-  async processForm(form) {
+  async handleFormSubmit(form) {
+    if (this.isProcessing) return;
+    
     const submitBtn = form.querySelector('button[type="submit"]');
-    if (!submitBtn || this.isProcessing) return;
-
     this.isProcessing = true;
     submitBtn.disabled = true;
-    const originalText = submitBtn.textContent;
-    submitBtn.textContent = 'Processing...';
+    submitBtn.innerHTML = '<span class="spinner"></span> Processing...';
 
     try {
       const formData = this.getFormData(form);
@@ -108,7 +104,7 @@ const MetaFrogApp = {
       this.showError(error);
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
+      submitBtn.textContent = 'Submit';
       this.isProcessing = false;
     }
   },
@@ -116,19 +112,33 @@ const MetaFrogApp = {
   getFormData(form) {
     const data = {
       wallet: form.wallet.value.trim(),
-      xUsername: form.xUsername.value.trim(),
-      telegram: form.telegram.value.trim(),
-      tiktok: form.tiktok.value.trim() || 'N/A',
+      xUsername: this.formatUsername(form.xUsername.value.trim()),
+      telegram: this.formatUsername(form.telegram.value.trim()),
+      tiktok: form.tiktok.value.trim() ? this.formatUsername(form.tiktok.value.trim()) : 'N/A',
       status: 'pending',
-      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      ip: 'unknown' // Removed external API call for Vercel compatibility
     };
 
-    // Validate
+    // Validation
     if (!data.wallet || !data.xUsername || !data.telegram) {
       throw new Error('Please fill all required fields');
     }
 
+    if (!this.isValidSolanaAddress(data.wallet)) {
+      throw new Error('Invalid Solana wallet address');
+    }
+
     return data;
+  },
+
+  formatUsername(username) {
+    return username.startsWith('@') ? username : `@${username}`;
+  },
+
+  isValidSolanaAddress(address) {
+    return address.length >= 32 && address.length <= 44 && 
+           /^[A-HJ-NP-Za-km-z1-9]*$/.test(address);
   },
 
   async saveToFirebase(data) {
@@ -142,14 +152,21 @@ const MetaFrogApp = {
     document.querySelectorAll('.step-card').forEach((step, index) => {
       step.className = `step-card ${index === 0 ? 'completed' : index === 1 ? 'active' : 'pending'}`;
     });
-    this.showAlert('Registration successful!');
+    this.showAlert('✅ Registration successful!');
+    localStorage.setItem('mfrog_registered', 'true');
   },
 
   // Steps management
   initializeSteps() {
-    document.querySelectorAll('.step-card').forEach((step, index) => {
-      step.className = `step-card ${index === 0 ? 'active' : 'pending'}`;
-    });
+    if (localStorage.getItem('mfrog_registered')) {
+      document.querySelectorAll('.step-card').forEach((step, index) => {
+        step.className = `step-card ${index === 0 ? 'completed' : index === 1 ? 'active' : 'pending'}`;
+      });
+    } else {
+      document.querySelectorAll('.step-card').forEach((step, index) => {
+        step.className = `step-card ${index === 0 ? 'active' : 'pending'}`;
+      });
+    }
   },
 
   // Utilities
@@ -172,7 +189,7 @@ const MetaFrogApp = {
 
   showError(error) {
     console.error('Error:', error);
-    this.showAlert(`Error: ${error.message}`, 'error');
+    this.showAlert(`❌ ${error.message}`, 'error');
   },
 
   showEmergencyMode() {
@@ -181,19 +198,30 @@ const MetaFrogApp = {
       submitBtn.disabled = true;
       submitBtn.textContent = 'Service unavailable';
     }
-    this.showAlert('System is in maintenance mode', 'error');
+    this.showAlert('⚠️ System is in maintenance mode', 'error');
+  },
+
+  copyReferralLink() {
+    const link = `${window.location.origin}${window.location.pathname}?ref=MFROG${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    navigator.clipboard.writeText(link)
+      .then(() => this.showAlert('✅ Referral link copied!'))
+      .catch(err => this.showError(err));
   }
 };
 
 // Initialize application
-document.addEventListener('DOMContentLoaded', () => {
-  MetaFrogApp.initialize();
-});
-
-// Handle browser navigation
+document.addEventListener('DOMContentLoaded', () => MetaFrogApp.init());
 window.addEventListener('popstate', () => {
   const sectionId = window.location.hash.substring(1) || 'home';
-  document.querySelectorAll('.section').forEach(section => {
-    section.style.display = section.id === sectionId ? 'block' : 'none';
-  });
+  MetaFrogApp.showSection(sectionId);
+});
+
+// Add copy referral link functionality
+document.querySelectorAll('.task-link').forEach(link => {
+  if (link.textContent.includes('Copy Referral Link')) {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      MetaFrogApp.copyReferralLink();
+    });
+  }
 });
