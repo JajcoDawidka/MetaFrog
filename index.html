@@ -1,25 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MetaFrog</title>
+  <!-- Zmodyfikowana polityka CSP -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.gstatic.com;
     script-src 'self' 'unsafe-inline' https://*.gstatic.com;
-    style-src 'self' 'unsafe-inline';
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     connect-src 'self' https://*.firebaseio.com https://*.googleapis.com;
     img-src 'self' data: https:;
-    font-src 'self' data: https:;
+    font-src 'self' https://fonts.gstatic.com;
+    frame-src https://raydium.io https://dexscreener.com;
   ">
   <style>
-    /* Twoje istniejące style */
-    .section { display: none; }
-    .section.active { display: block; }
+    /* Podstawowe style sekcji */
+    .section { 
+      display: none;
+      animation: fadeIn 0.5s ease-out;
+    }
+    .section.active { 
+      display: block;
+    }
     
-    /* Dodatkowe style dla spinnera i alertów */
+    /* Style dla kroków airdrop */
+    .step-card {
+      transition: all 0.3s ease;
+    }
+    .step-card.completed {
+      border-left: 4px solid #4CAF50;
+      background: rgba(76, 175, 80, 0.1);
+    }
+    .step-card.active {
+      border-left: 4px solid #2196F3;
+      background: rgba(33, 150, 243, 0.1);
+    }
+    .step-card.pending {
+      opacity: 0.7;
+    }
+    
+    /* Spinner dla przycisku */
     .spinner {
       display: inline-block;
-      width: 1em;
-      height: 1em;
+      width: 1rem;
+      height: 1rem;
       border: 2px solid rgba(255,255,255,0.3);
       border-radius: 50%;
       border-top-color: #fff;
@@ -32,49 +57,37 @@
       to { transform: rotate(360deg); }
     }
     
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    /* Alerty */
     .alert {
       position: fixed;
       top: 20px;
       right: 20px;
-      padding: 12px 24px;
-      border-radius: 4px;
+      padding: 15px 25px;
+      border-radius: 8px;
       color: white;
       z-index: 1000;
-      animation: slideIn 0.3s;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      animation: slideIn 0.3s forwards;
     }
-    
     .alert.success {
       background: #4CAF50;
     }
-    
     .alert.error {
       background: #f44336;
     }
-    
     @keyframes slideIn {
       from { transform: translateX(100%); }
       to { transform: translateX(0); }
     }
-    
-    .step-card.completed {
-      border-left: 4px solid #4CAF50;
-      background: rgba(76, 175, 80, 0.05);
-    }
-    
-    .step-card.active {
-      border-left: 4px solid #2196F3;
-      background: rgba(33, 150, 243, 0.05);
-    }
-    
-    .step-card.pending {
-      opacity: 0.6;
-    }
   </style>
+  <!-- Reszta twojego kodu HTML pozostaje bez zmian -->
 </head>
 <body>
-  <!-- Twoja istniejąca struktura HTML -->
-  <script src="./script.js"></script>
     <header>
         <h1>MetaFrog</h1>
         <nav>
@@ -434,6 +447,6 @@
     </footer>
         </div>
     
-        <script src="script.js"></script>
+        <script src="./script.js"></script>
     </body>
     </html>
