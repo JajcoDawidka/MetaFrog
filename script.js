@@ -20,17 +20,11 @@ const MetaFrogApp = {
 
   async init() {
     try {
-      // Initialize Firebase
       await this.loadFirebase();
-      
-      // Setup application
       this.setupNavigation();
       this.setupAirdropForm();
       this.initializeSteps();
-      
-      // Show initial section
       this.showSection(window.location.hash.substring(1) || 'home');
-      
     } catch (error) {
       console.error('Initialization error:', error);
       this.showEmergencyMode();
@@ -38,20 +32,17 @@ const MetaFrogApp = {
   },
 
   async loadFirebase() {
-    // Load Firebase SDK if not already loaded
     if (typeof firebase === 'undefined') {
       await this.loadScript('https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js');
       await this.loadScript('https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js');
       await this.loadScript('https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js');
     }
 
-    // Initialize Firebase
     const app = firebase.initializeApp(firebaseConfig);
     this.db = app.firestore();
     this.realtimeDb = app.database();
   },
 
-  // Navigation
   setupNavigation() {
     document.querySelectorAll('nav a').forEach(link => {
       link.addEventListener('click', (e) => {
@@ -63,12 +54,10 @@ const MetaFrogApp = {
   },
 
   showSection(sectionId) {
-    // Hide all sections
     document.querySelectorAll('.section').forEach(section => {
       section.style.display = 'none';
     });
-
-    // Show requested section
+    
     const section = document.getElementById(sectionId);
     if (section) {
       section.style.display = 'block';
@@ -77,13 +66,12 @@ const MetaFrogApp = {
     }
   },
 
-  // Form handling
   setupAirdropForm() {
     const form = document.querySelector('.airdrop-form');
     if (form) {
-      form.addEventListener('submit', (e) => {
+      form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        this.handleFormSubmit(e.target);
+        await this.handleFormSubmit(e.target);
       });
     }
   },
@@ -100,12 +88,11 @@ const MetaFrogApp = {
       const formData = this.getFormData(form);
       await this.saveToFirebase(formData);
       this.updateUIAfterSubmission();
+      form.querySelectorAll('input').forEach(input => input.disabled = true);
     } catch (error) {
       this.showError(error);
     } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Submit';
-      this.isProcessing = false;
+      submitBtn.textContent = 'Submitted';
     }
   },
 
@@ -117,10 +104,8 @@ const MetaFrogApp = {
       tiktok: form.tiktok.value.trim() ? this.formatUsername(form.tiktok.value.trim()) : 'N/A',
       status: 'pending',
       timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-      ip: 'unknown' // Removed external API call for Vercel compatibility
     };
-
-    // Validation
+    
     if (!data.wallet || !data.xUsername || !data.telegram) {
       throw new Error('Please fill all required fields');
     }
@@ -137,8 +122,7 @@ const MetaFrogApp = {
   },
 
   isValidSolanaAddress(address) {
-    return address.length >= 32 && address.length <= 44 && 
-           /^[A-HJ-NP-Za-km-z1-9]*$/.test(address);
+    return address.length >= 32 && address.length <= 44 && /^[A-HJ-NP-Za-km-z1-9]*$/.test(address);
   },
 
   async saveToFirebase(data) {
@@ -149,27 +133,24 @@ const MetaFrogApp = {
   },
 
   updateUIAfterSubmission() {
-    document.querySelectorAll('.step-card').forEach((step, index) => {
-      step.className = `step-card ${index === 0 ? 'completed' : index === 1 ? 'active' : 'pending'}`;
-    });
-    this.showAlert('✅ Registration successful!');
     localStorage.setItem('mfrog_registered', 'true');
+    this.updateSteps();
+    this.showAlert('✅ Registration successful!');
   },
 
-  // Steps management
   initializeSteps() {
-    if (localStorage.getItem('mfrog_registered')) {
-      document.querySelectorAll('.step-card').forEach((step, index) => {
-        step.className = `step-card ${index === 0 ? 'completed' : index === 1 ? 'active' : 'pending'}`;
-      });
-    } else {
-      document.querySelectorAll('.step-card').forEach((step, index) => {
-        step.className = `step-card ${index === 0 ? 'active' : 'pending'}`;
-      });
-    }
+    this.updateSteps();
   },
 
-  // Utilities
+  updateSteps() {
+    const registered = localStorage.getItem('mfrog_registered');
+    document.querySelectorAll('.step-card').forEach((step, index) => {
+      step.className = `step-card ${
+        registered ? (index === 0 ? 'completed' : index === 1 ? 'active' : 'pending') 
+                   : (index === 0 ? 'active' : 'pending')}`;
+    });
+  },
+
   loadScript(url) {
     return new Promise((resolve) => {
       const script = document.createElement('script');
@@ -199,37 +180,10 @@ const MetaFrogApp = {
       submitBtn.textContent = 'Service unavailable';
     }
     this.showAlert('⚠️ System is in maintenance mode', 'error');
-  },
-
-  copyReferralLink() {
-    const link = `${window.location.origin}${window.location.pathname}?ref=MFROG${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-    navigator.clipboard.writeText(link)
-      .then(() => this.showAlert('✅ Referral link copied!'))
-      .catch(err => this.showError(err));
   }
 };
 
-// Initialize application
 document.addEventListener('DOMContentLoaded', () => MetaFrogApp.init());
 window.addEventListener('popstate', () => {
-  const sectionId = window.location.hash.substring(1) || 'home';
-  MetaFrogApp.showSection(sectionId);
+  MetaFrogApp.showSection(window.location.hash.substring(1) || 'home');
 });
-
-// Add copy referral link functionality
-document.querySelectorAll('.task-link').forEach(link => {
-  if (link.textContent.includes('Copy Referral Link')) {
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      MetaFrogApp.copyReferralLink();
-    });
-  }
-});
-
-// Na końcu pliku
-console.log('MetaFrog initialized');
-if (typeof firebase !== 'undefined') {
-  console.log('Firebase loaded successfully');
-} else {
-  console.warn('Firebase not loaded');
-}
