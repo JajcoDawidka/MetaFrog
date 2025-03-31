@@ -1,3 +1,5 @@
+/* style.css - główne style aplikacji */
+
 /* ================== */
 /* 🌎 GLOBAL STYLES  */
 /* ================== */
@@ -114,7 +116,6 @@ nav a:hover {
     box-sizing: border-box;
     margin-top: 0; /* Upewnij się, że nie ma dodatkowego marginesu */
 }
-
 
 .section.active {
     display: block;
@@ -532,6 +533,7 @@ nav a:hover {
     padding: 25px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
+
 /* ================== */
 /* ✅ COMPLETED STEPS */
 /* ================== */
@@ -575,6 +577,7 @@ nav a:hover {
 .completed-step.completed-step ~ .step-connector::after {
     width: 100%; /* Po ukończeniu drugiego kroku pokazuje cały pasek */
 }
+
 /* ================== */
 /* 🎁 AIRDROP FORM    */
 /* ================== */
@@ -1106,4 +1109,153 @@ footer p {
     footer {
         padding: 30px 0 15px;
     }
+}
+
+/* ================== */
+/* 🎨 DODATKOWE STYLE */
+/* ================== */
+
+/* Kontener główny */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+/* Spinner dla przycisku */
+.spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Alerty */
+.alert {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 25px;
+    border-radius: 8px;
+    color: white;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    animation: slideIn 0.3s forwards;
+    max-width: 300px;
+    display: flex;
+    align-items: center;
+}
+
+.alert.success {
+    background: #4CAF50;
+    border-left: 5px solid #2E7D32;
+}
+
+.alert.error {
+    background: #f44336;
+    border-left: 5px solid #c62828;
+}
+
+.alert-icon {
+    margin-right: 10px;
+    font-size: 1.2rem;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/* Formularz */
+.airdrop-form {
+    background: rgba(255,255,255,0.05);
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    background: rgba(255,255,255,0.1);
+    color: white;
+}
+
+.submit-btn {
+    background: #2196F3;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    width: 100%;
+    transition: background 0.3s;
+}
+
+.submit-btn:hover {
+    background: #0d8bf2;
+}
+
+.submit-btn:disabled {
+    background: #555;
+    cursor: not-allowed;
+}
+
+.required-field {
+    color: #f44336;
+    font-size: 12px;
+    margin-top: 3px;
+    display: block;
+}
+
+/* Style dla kroków airdrop */
+.steps-container {
+    margin: 30px 0;
+}
+
+.step-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+    cursor: pointer;
+}
+
+.step-content {
+    padding: 10px 0;
+    display: none;
+}
+
+.step-card.active .step-content {
+    display: block;
+}
+
+.step-description {
+    color: #ccc;
+    margin-bottom: 15px;
 }
