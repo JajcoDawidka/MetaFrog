@@ -1,6 +1,6 @@
 /**
- * MetaFrog - Final Working Version
- * Full Firebase Integration
+ * MetaFrog - Secure Production Version
+ * Full Firebase Integration with Security Rules
  */
 
 // Firebase configuration
@@ -58,11 +58,13 @@ const MetaFrogApp = {
 
   showSection(sectionId) {
     document.querySelectorAll('.section').forEach(section => {
+      section.classList.remove('active');
       section.style.display = 'none';
     });
     
     const section = document.getElementById(sectionId);
     if (section) {
+      section.classList.add('active');
       section.style.display = 'block';
       window.scrollTo(0, 0);
       history.pushState(null, null, `#${sectionId}`);
@@ -89,14 +91,16 @@ const MetaFrogApp = {
 
     try {
       const formData = this.getFormData(form);
-      await this.saveToFirebase(formData);
-      this.updateSteps();
-      this.updateUIAfterSubmission();
-      form.querySelectorAll('input').forEach(input => input.disabled = true);
+      const success = await this.saveToFirebase(formData);
+      if (success) {
+        this.updateSteps();
+        this.updateUIAfterSubmission(formData.wallet);
+        form.querySelectorAll('input').forEach(input => input.disabled = true);
+      }
     } catch (error) {
       this.showError(error);
     } finally {
-      submitBtn.textContent = 'Submitted';
+      this.isProcessing = false;
     }
   },
 
@@ -108,6 +112,8 @@ const MetaFrogApp = {
       tiktok: form.tiktok.value.trim() ? this.formatUsername(form.tiktok.value.trim()) : 'N/A',
       status: 'pending',
       timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      ip: '', // Will be set server-side
+      userAgent: navigator.userAgent
     };
     
     if (!data.wallet || !data.xUsername || !data.telegram) {
@@ -130,15 +136,32 @@ const MetaFrogApp = {
   },
 
   async saveToFirebase(data) {
-    await Promise.all([
-      this.db.collection('airdropParticipants').doc(data.wallet).set(data),
-      this.realtimeDb.ref(`airdropSubmissions/${data.wallet.replace(/\./g, '_')}`).set(data)
-    ]);
+    try {
+      // First save to Firestore
+      await this.db.collection('airdropParticipants').doc(data.wallet).set(data);
+      
+      // Then save to Realtime Database
+      await this.realtimeDb.ref(`airdropSubmissions/${data.wallet.replace(/\./g, '_')}`).set({
+        ...data,
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+      });
+      
+      return true;
+    } catch (error) {
+      console.error("Firebase error:", error);
+      if (error.code === 'permission-denied') {
+        this.showError(new Error('Server error. Please try again later.'));
+      } else {
+        this.showError(new Error('Network error. Please check your connection.'));
+      }
+      return false;
+    }
   },
 
-  updateUIAfterSubmission() {
+  updateUIAfterSubmission(wallet) {
     localStorage.setItem('mfrog_registered', 'true');
-    this.showAlert('✅ Registration successful!');
+    localStorage.setItem('mfrog_wallet', wallet);
+    this.showAlert('✅ Registration successful! Your submission is being verified.');
   },
 
   initializeSteps() {
@@ -169,7 +192,7 @@ const MetaFrogApp = {
         <div class="step-card pending-step">
           <div class="step-number">3</div>
           <h3>Wait for Airdrop Completion</h3>
-          <p>Once the tasks are completed and verified, you'll need to wait for the airdrop to finish before receiving your tokens</p>
+          <p>Once the tasks are completed and verified, you'll need to wait for the airdrop to finish</p>
           <div class="step-status">PENDING</div>
         </div>
       `;
@@ -203,25 +226,21 @@ const MetaFrogApp = {
       <div class="step-card pending-step">
         <div class="step-number">3</div>
         <h3>Wait for Airdrop Completion</h3>
-        <p>Once the tasks are completed and verified, you'll need to wait for the airdrop to finish before receiving your tokens</p>
+        <p>Once the tasks are completed and verified, you'll need to wait for the airdrop to finish</p>
         <div class="step-status">PENDING</div>
       </div>
     `;
-    
-    // Update connector animation
-    document.querySelectorAll('.step-connector').forEach((connector, index) => {
-      setTimeout(() => {
-        connector.querySelector('::after').style.width = index === 0 ? '100%' : '0';
-      }, 300);
-    });
   },
 
   setupTaskLinks() {
     // Add click handlers for task links
     document.querySelectorAll('.task-link').forEach(link => {
       if (!link.classList.contains('dexscreener-link')) {
-        link.addEventListener('click', () => {
-          this.showAlert('Task completed! Remember to submit your wallet address first.', 'info');
+        link.addEventListener('click', (e) => {
+          if (!localStorage.getItem('mfrog_registered')) {
+            e.preventDefault();
+            this.showAlert('Please register first by submitting your wallet address', 'error');
+          }
         });
       }
     });
@@ -230,6 +249,12 @@ const MetaFrogApp = {
     const dexscreenerLink = document.querySelector('.dexscreener-link');
     if (dexscreenerLink) {
       dexscreenerLink.addEventListener('click', (e) => {
+        if (!localStorage.getItem('mfrog_registered')) {
+          e.preventDefault();
+          this.showAlert('Please register first by submitting your wallet address', 'error');
+          return;
+        }
+        
         e.preventDefault();
         window.open(dexscreenerLink.href, '_blank');
         this.showAlert('DexScreener task completed!', 'info');
@@ -241,24 +266,29 @@ const MetaFrogApp = {
   },
 
   loadScript(url) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const script = document.createElement('script');
       script.src = url;
       script.onload = resolve;
+      script.onerror = reject;
       document.head.appendChild(script);
     });
   },
 
   showAlert(message, type = 'success') {
+    // Remove existing alerts
+    document.querySelectorAll('.alert').forEach(alert => alert.remove());
+    
     const alert = document.createElement('div');
     alert.className = `alert ${type}`;
     alert.innerHTML = `
-      <span class="alert-icon">${type === 'success' ? '✓' : '⚠️'}</span>
+      <span class="alert-icon">${type === 'success' ? '✓' : type === 'error' ? '✕' : '⚠️'}</span>
       ${message}
     `;
     document.body.appendChild(alert);
+    
     setTimeout(() => {
-      alert.style.opacity = '0';
+      alert.classList.add('fade-out');
       setTimeout(() => alert.remove(), 300);
     }, 3000);
   },
@@ -278,16 +308,22 @@ const MetaFrogApp = {
   },
 
   copyReferralLink() {
-    const referralLink = `${window.location.origin}${window.location.pathname}?ref=${localStorage.getItem('mfrog_wallet') || 'metafrog'}`;
+    if (!localStorage.getItem('mfrog_registered')) {
+      this.showAlert('Please register first by submitting your wallet address', 'error');
+      return;
+    }
+    
+    const referralLink = `${window.location.origin}${window.location.pathname}?ref=${localStorage.getItem('mfrog_wallet')}`;
     navigator.clipboard.writeText(referralLink)
       .then(() => this.showAlert('Referral link copied to clipboard!', 'info'))
       .catch(() => this.showAlert('Failed to copy referral link', 'error'));
   }
 };
 
-// Make copyReferralLink available globally
+// Make functions available globally
 window.copyReferralLink = MetaFrogApp.copyReferralLink.bind(MetaFrogApp);
 
+// Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => MetaFrogApp.init());
 window.addEventListener('popstate', () => {
   MetaFrogApp.showSection(window.location.hash.substring(1) || 'home');
