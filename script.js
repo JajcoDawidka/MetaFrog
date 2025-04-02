@@ -1,189 +1,1219 @@
-/**
- * MetaFrog - Final Working Version
- * Full Firebase Integration
- */
+/* style.css - główne style aplikacji */
 
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyAR6Ha8baMX5EPsPVayTno0e0QBRqZrmco",
-  authDomain: "metafrog-airdrop.firebaseapp.com",
-  databaseURL: "https://metafrog-airdrop-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "metafrog-airdrop",
-  storageBucket: "metafrog-airdrop.appspot.com",
-  messagingSenderId: "546707737127",
-  appId: "1:546707737127:web:67956ae63ffef3ebeddc02",
-  measurementId: "G-2Z78VYL739"
-};
+/* ================== */
+/* 🌎 GLOBAL STYLES  */
+/* ================== */
+html, body {
+    overflow-x: hidden;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    max-width: 100%;
+    scroll-behavior: smooth;
+}
 
-const MetaFrogApp = {
-  isProcessing: false,
+html {
+    scroll-behavior: smooth;
+}
 
-  async init() {
-    try {
-      await this.loadFirebase();
-      this.setupNavigation();
-      this.setupAirdropForm();
-      this.initializeSteps();
-      this.showSection(window.location.hash.substring(1) || 'home');
-    } catch (error) {
-      console.error('Initialization error:', error);
-      this.showEmergencyMode();
+body {
+    background-color: #0d0d0d;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    scroll-behavior: smooth;
+}
+
+body h1 {
+    color: #8a2be2;
+    font-size: 36px;
+    font-weight: bold;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+/* ================== */
+/* 🔝 HEADER / NAV   */
+/* ================== */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0;
+    background-color: #111;
+    width: 100%;
+    height: 60px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    margin-bottom: 0;
+}
+
+header h1 {
+    font-size: 30px;
+    color: #8a2be2;
+    margin: 0;
+    position: absolute;
+    left: 50px;
+}
+
+nav {
+    display: flex;
+    justify-content: center;
+    flex-grow: 1;
+}
+
+#zakladki {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+#zakladki ul {
+    list-style: none;
+    display: flex;
+    gap: 20px;
+    padding: 0;
+    margin: 0;
+}
+
+nav a {
+    color: #8a2be2;
+    text-decoration: none;
+    font-weight: bold;
+    text-align: center;
+    font-size: 18px;
+    padding: 15px 30px;
+    border-radius: 8px;
+}
+
+nav a:hover {
+    color: #111;
+    background-color: #8a2be2;
+}
+
+.main-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100%;
+    margin-top: 60px;
+}
+
+.section {
+    display: none;
+    text-align: center;
+    padding: 25px;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 0;
+}
+
+.section.active {
+    display: block;
+}
+
+#home .roadmap-heading {
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+
+/* ================== */
+/* ℹ️ ABOUT BLOCKS   */
+/* ================== */
+.about-blocks {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 150px;
+    margin-top: 0px;
+}
+
+.block {
+    background-color: #111;
+    border: 2px solid #8a2be2;
+    border-radius: 10px;
+    padding: 20px;
+    width: 250px;
+    text-align: center;
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+#about .roadmap-heading {
+    margin-top: 0px;
+    margin-bottom: 50px;
+}
+
+.block:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(138, 43, 226, 0.8);
+}
+
+/* ================== */
+/* 🚀 ROADMAP BLOCKS  */
+/* ================== */
+.roadmap {
+    color: #8a2be2;
+    font-size: 36px;
+    margin-bottom: 0px;
+    margin-top: 0px;
+}
+
+.roadmapa {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto;
+    width: 100%;
+    max-width: 1000px;
+    margin: 30px auto;
+    position: relative;
+}
+
+.Q {
+    background-color: #111;
+    border: 2px solid #8a2be2;
+    border-radius: 10px;
+    padding: 30px;
+    width: 300px;
+    text-align: center;
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    margin-bottom: 150px;
+}
+
+#Q2 { justify-self: left; align-self: center; margin-top: 0px; }
+#Q3 { justify-self: right; align-self: center; margin-top: 60px; }
+#Q4 { justify-self: left; align-self: center; margin-top: 120px; }
+#Q1 { justify-self: right; align-self: center; margin-top: 180px; }
+
+.Q:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(138, 43, 226, 0.7);
+}
+
+/* ================== */
+/* 💰 TOKENOMICS    */
+/* ================== */
+.tokenomics {
+    text-align: center;
+    background-color: #111;
+    border-radius: 15px;
+    border: 2px solid #8a2be2;
+    box-shadow: 0 4px 10px rgba(138, 43, 226, 0.5);
+    padding: 20px;
+    margin: 0 auto;
+    max-width: 1000px;
+}
+
+.tokenomics h1 {
+    color: #8a2be2;
+    font-size: 48px;
+    margin-top: 50px;
+    margin-bottom: 50px;
+}
+
+.tokenomics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+    justify-items: center;
+    margin-bottom: 30px;
+}
+
+.token-box {
+    background-color: #111;
+    padding: 30px;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 280px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 2px solid #8a2be2;
+}
+
+.token-box:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 0 25px rgba(138, 43, 226, 0.7);
+}
+
+.token-box h2 {
+    color: #8a2be2;
+    font-size: 30px;
+}
+
+.token-box p {
+    color: #fff;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+/* ================== */
+/* 🛒 BUY $MFROG    */
+/* ================== */
+.buy-mfrog {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 50px;
+}
+
+.buy-mfrog-block {
+    background-color: #111;
+    padding: 20px;
+    border-radius: 15px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(138, 43, 226, 0.5);
+    max-width: 500px;
+    width: 100%;
+    border: 2px solid #8a2be2;
+    transition: all 0.3s ease;
+}
+
+.buy-mfrog-block:hover {
+    box-shadow: 0 0 10px 4px #8a2be2;
+    transform: scale(1.05);
+}
+
+.buy-mfrog-block h1 {
+    color: #8a2be2;
+    font-size: 30px;
+    margin-bottom: 20px;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 10px rgba(106, 90, 205, 0.5); }
+    50% { box-shadow: 0 0 20px rgba(106, 90, 205, 0.8); }
+    100% { box-shadow: 0 0 10px rgba(106, 90, 205, 0.5); }
+}
+
+.buy-button {
+    display: inline-block;
+    background: linear-gradient(45deg, #4a90e2, #6a5acd);
+    color: #f8f8f8;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(106, 90, 205, 0.5);
+    transition: transform 0.2s ease, box-shadow 0.3s ease-in-out;
+    animation: pulse 2s infinite;
+}
+
+.buy-button:hover {
+    transform: scale(1.05);
+    background: linear-gradient(45deg, #3b7dd8, #5a4bcf);
+    box-shadow: 0 0 15px rgba(106, 90, 205, 0.9);
+}
+
+.buy-button:active {
+    transform: scale(0.98);
+}
+
+/* ================== */
+/* 🎁 AIRDROP SECTION */
+/* ================== */
+#airdrop {
+    padding: 40px 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.airdrop-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.airdrop-header h1 {
+    font-size: 2.8rem;
+    color: #fff;
+    margin-bottom: 15px;
+    position: relative;
+    display: inline-block;
+}
+
+.airdrop-header h1 span.text {
+    background: linear-gradient(90deg, #8a2be2, #ff4500);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+}
+
+.fire-emoji {
+    display: inline-block;
+    animation: fire-pulse 1.5s infinite, fire-glow 1s infinite alternate;
+    transform-origin: center;
+    color: #ff4500;
+    text-shadow: 0 0 8px rgba(255, 69, 0, 0.7);
+}
+
+@keyframes fire-pulse {
+    0% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.3); opacity: 1; }
+    100% { transform: scale(1); opacity: 0.8; }
+}
+
+@keyframes fire-glow {
+    0% { text-shadow: 0 0 5px #ff4500; }
+    100% { text-shadow: 0 0 15px #ff4500, 0 0 20px #ff8c00; }
+}
+
+.airdrop-subtitle {
+    font-size: 1.1rem;
+    color: #aaa;
+    margin-bottom: 0;
+}
+
+.airdrop-steps-container {
+    background: #111;
+    border-radius: 15px;
+    padding: 30px;
+    margin: 40px auto;
+    border: 1px solid #333;
+    max-width: 800px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.airdrop-steps {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+    padding: 20px 0;
+}
+
+.step-card {
+    background: #1a1a1a;
+    border-radius: 12px;
+    padding: 25px;
+    width: 28%;
+    text-align: center;
+    border: 1px solid #333;
+    position: relative;
+    z-index: 2;
+    transition: all 0.4s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.step-card.completed-step {
+    border-left: 4px solid #4CAF50;
+    background: linear-gradient(135deg, #1a1a1a, #0a2e0a);
+    color: #4CAF50;
+}
+
+.step-card.active-step {
+    border-left: 4px solid #8a2be2;
+    background: linear-gradient(135deg, #1a1a1a, #2a0a4a);
+    color: #8a2be2;
+    animation: pulse-glow 2s infinite;
+}
+
+.step-card.pending-step {
+    opacity: 0.7;
+    background: linear-gradient(135deg, #1a1a1a, #1a1a1a);
+    border-left: 4px solid #9E9E9E;
+    color: #9E9E9E;
+}
+
+.step-card:hover {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    transform: scale(1.05);
+}
+
+.step-number {
+    background: #333;
+    color: #fff;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 15px;
+    font-weight: bold;
+    font-size: 1.2rem;
+    border: 2px solid #444;
+    transition: all 0.3s ease;
+}
+
+.step-card.completed-step .step-number {
+    background: #4CAF50;
+    border-color: #4CAF50;
+}
+
+.step-card.active-step .step-number {
+    background: #8a2be2;
+    border-color: #a855f7;
+}
+
+.step-card.pending-step .step-number {
+    background: #9E9E9E;
+    border-color: #9E9E9E;
+}
+
+.step-card h3 {
+    color: #ddd;
+    margin-bottom: 10px;
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+}
+
+.step-card.completed-step h3 {
+    color: #4CAF50;
+}
+
+.step-card.active-step h3 {
+    color: #8a2be2;
+}
+
+.step-card.pending-step h3 {
+    color: #9E9E9E;
+}
+
+.step-card p {
+    color: #aaa;
+    font-size: 0.95rem;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+}
+
+.step-card.active-step p {
+    color: #ccc;
+}
+
+.step-status {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    background: #333;
+    color: #777;
+    transition: all 0.3s ease;
+}
+
+.step-card.completed-step .step-status {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4CAF50;
+}
+
+.step-card.active-step .step-status {
+    background: rgba(138, 43, 226, 0.2);
+    color: #8a2be2;
+}
+
+.step-card.pending-step .step-status {
+    background: rgba(158, 158, 158, 0.2);
+    color: #9E9E9E;
+}
+
+.step-connector {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #333;
+    z-index: 1;
+    transform: translateY(-50%);
+}
+
+.step-connector::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, #4CAF50, #8a2be2);
+    transition: width 0.8s ease;
+}
+
+@keyframes pulse-glow {
+    0% { box-shadow: 0 0 0 0 rgba(138, 43, 226, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(138, 43, 226, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(138, 43, 226, 0); }
+}
+
+.airdrop-content-wrapper {
+    display: flex;
+    gap: 30px;
+    justify-content: space-between;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.airdrop-left-column {
+    flex: 0 0 45%;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.airdrop-right-column {
+    flex: 0 0 50%;
+}
+
+.airdrop-form-container, 
+.airdrop-status,
+.airdrop-tasks-container {
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* ================== */
+/* ✅ COMPLETED STEPS */
+/* ================== */
+.completed-step {
+    border-color: #4CAF50 !important;
+    background: linear-gradient(135deg, #1a1a1a, #0a2e0a) !important;
+}
+
+.completed-step .step-number {
+    background: #4CAF50 !important;
+    border-color: #4CAF50 !important;
+}
+
+.completed-step h3 {
+    color: #4CAF50 !important;
+}
+
+.completed-step .step-status {
+    background: rgba(76, 175, 80, 0.2) !important;
+    color: #4CAF50 !important;
+}
+
+/* ================== */
+/* 🔄 STEP CONNECTOR */
+/* ================== */
+.step-connector::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 33%;
+    background: linear-gradient(90deg, #4CAF50, #8a2be2);
+    transition: width 0.8s ease;
+}
+
+.completed-step ~ .step-connector::after {
+    width: 66%;
+}
+
+.completed-step.completed-step ~ .step-connector::after {
+    width: 100%;
+}
+
+/* ================== */
+/* 🎁 AIRDROP FORM    */
+/* ================== */
+.airdrop-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    width: 100%;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #8a2be2;
+}
+
+.form-group input {
+    background: #222;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 12px;
+    color: white;
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    margin: 0 auto;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #8a2be2;
+}
+
+.required-field {
+    display: block;
+    font-size: 0.8rem;
+    color: #8a2be2;
+    margin-top: 5px;
+    text-align: center;
+}
+
+.submit-btn {
+    background: linear-gradient(135deg, #8a2be2, #4b0082);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 200px;
+    margin: 20px auto 0;
+    display: block;
+}
+
+.submit-btn:hover {
+    background: linear-gradient(135deg, #9a3bf2, #5b00a2);
+    transform: translateY(-2px);
+}
+
+.form-header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.form-header h3 {
+    color: #8a2be2;
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+}
+
+.tasks-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+    margin: 25px 0;
+}
+
+.task-card {
+    border-radius: 10px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: all 0.3s ease;
+}
+
+.task-card:hover {
+    transform: translateY(-3px);
+}
+
+.required-task {
+    border-left: 3px solid #8a2be2;
+    background: rgba(138, 43, 226, 0.08);
+    position: relative;
+    overflow: hidden;
+}
+
+.required-task::before {
+    content: 'REQUIRED';
+    position: absolute;
+    top: 10px;
+    right: -25px;
+    background: #8a2be2;
+    color: white;
+    padding: 2px 25px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    transform: rotate(45deg);
+}
+
+.required-task .task-icon {
+    background: rgba(138, 43, 226, 0.2);
+    color: #8a2be2;
+}
+
+.required-task .task-reward {
+    color: #8a2be2;
+    font-weight: bold;
+}
+
+.optional-task {
+    border-left: 3px solid #666;
+    background: rgba(102, 102, 102, 0.05);
+}
+
+.optional-task .task-icon {
+    background: rgba(102, 102, 102, 0.1);
+    color: #666;
+}
+
+.optional-task .task-reward {
+    color: #666;
+}
+
+.tasks-header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.tasks-header h3 {
+    color: #8a2be2;
+    font-size: 1.3rem;
+    margin-bottom: 5px;
+}
+
+.tasks-header p {
+    color: #777;
+    font-size: 0.9rem;
+}
+
+.task-icon {
+    font-size: 1.3rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.task-content {
+    flex-grow: 1;
+}
+
+.task-content h4 {
+    font-size: 1rem;
+    margin-bottom: 5px;
+}
+
+.required-task h4 {
+    color: #8a2be2;
+}
+
+.optional-task h4 {
+    color: #aaa;
+}
+
+.task-description {
+    color: #777;
+    font-size: 0.8rem;
+    margin-top: 5px;
+}
+
+.task-reward {
+    font-size: 0.85rem;
+    margin-top: 8px;
+}
+
+.airdrop-status {
+    background: #111;
+    border-radius: 15px;
+    padding: 30px;
+    border: 1px solid #333;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.status-card {
+    text-align: center;
+    position: relative;
+}
+
+.status-icon {
+    display: inline-block;
+    width: 60px;
+    height: 60px;
+    background: #8a2be2;
+    border-radius: 50%;
+    color: white;
+    font-size: 30px;
+    line-height: 60px;
+    margin-bottom: 20px;
+    box-shadow: 0 0 20px rgba(138, 43, 226, 0.3);
+}
+
+.status-card h3 {
+    color: #8a2be2;
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+}
+
+.status-card > p {
+    color: #aaa;
+    margin-bottom: 25px;
+    font-size: 1rem;
+}
+
+.status-details {
+    background: #1a1a1a;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 25px 0;
+    border-left: 3px solid #8a2be2;
+}
+
+.status-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #333;
+}
+
+.status-item:last-child {
+    border-bottom: none;
+}
+
+.status-label {
+    color: #aaa;
+    font-weight: bold;
+}
+
+.status-value {
+    color: #fff;
+    font-weight: bold;
+}
+
+.status-note {
+    background: rgba(138, 43, 226, 0.05);
+    border-left: 3px solid #8a2be2;
+    padding: 15px;
+    margin-top: 20px;
+    border-radius: 0 5px 5px 0;
+    text-align: left;
+}
+
+.status-note p {
+    color: #ccc;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin: 10px 0;
+    position: relative;
+    padding-left: 15px;
+}
+
+.status-note p:before {
+    content: "•";
+    color: #8a2be2;
+    position: absolute;
+    left: 0;
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+.task-link {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 8px 15px;
+    background: rgba(138, 43, 226, 0.2);
+    color: #8a2be2;
+    border-radius: 5px;
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+    border: 1px solid #8a2be2;
+}
+
+.task-link:hover {
+    background: #8a2be2;
+    color: white;
+    transform: translateY(-2px);
+}
+
+.required-task .task-link {
+    background: rgba(138, 43, 226, 0.1);
+    border-color: #8a2be2;
+}
+
+.optional-task .task-link {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: #666;
+}
+
+.task-icon i {
+    font-size: 1.5rem;
+}
+
+.fa-twitter { color: #1DA1F2; }
+.fa-telegram { color: #0088cc; }
+.fa-tiktok { color: #000000; }
+.fa-retweet { color: #8a2be2; }
+.fa-user-plus { color: #8a2be2; }
+.fa-external-link-alt { font-size: 0.8rem; margin-right: 5px; }
+.fa-copy { font-size: 0.8rem; margin-right: 5px; }
+
+.task-link i {
+    margin-right: 5px;
+}
+
+.task-icon .fa-chart-line {
+    color: #8a2be2;
+}
+
+.verification-status {
+    display: none;
+    margin-left: 8px;
+    font-size: 0.9em;
+}
+  
+.task-verified .verification-status {
+    display: inline;
+    color: #4CAF50;
+}
+  
+.task-pending .verification-status {
+    display: inline;
+    color: #FFC107;
+}
+
+/* ================== */
+/* 👇 FOOTER         */
+/* ================== */
+footer {
+    background-color: #111;
+    color: #fff;
+    padding: 40px 0 20px;
+    width: 100%;
+    margin-top: auto;
+    text-align: center;
+    border-top: 2px solid #8a2be2;
+}
+
+.social-links {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.social-links a {
+    color: #8a2be2;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 2px solid #8a2be2;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.social-links a:hover {
+    background-color: #8a2be2;
+    color: #111;
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(138, 43, 226, 0.4);
+}
+
+.footer-links {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.footer-links a {
+    color: #aaa;
+    text-decoration: none;
+    font-size: 14px;
+    transition: color 0.3s ease;
+}
+
+.footer-links a:hover {
+    color: #8a2be2;
+}
+
+footer p {
+    margin: 0;
+    font-size: 14px;
+    color: #666;
+}
+
+/* ================== */
+/* 🌍 MEDIA QUERIES  */
+/* ================== */
+@media screen and (max-width: 768px) {
+    header h1 {
+        font-size: 25px;
+        left: 20px;
     }
-  },
 
-  async loadFirebase() {
-    if (typeof firebase === 'undefined') {
-      await this.loadScript('https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js');
-      await this.loadScript('https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js');
-      await this.loadScript('https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js');
+    nav a {
+        font-size: 14px;
+        padding: 10px 15px;
     }
 
-    const app = firebase.initializeApp(firebaseConfig);
-    this.db = app.firestore();
-    this.realtimeDb = app.database();
-  },
+    .section {
+        padding: 30px 15px;
+    }
 
-  setupNavigation() {
-    document.querySelectorAll('nav a').forEach(link => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const sectionId = e.target.getAttribute('href').substring(1);
-        this.showSection(sectionId);
-      });
-    });
-  },
+    .about-blocks, .roadmapa {
+        flex-direction: column;
+    }
 
-  showSection(sectionId) {
-    document.querySelectorAll('.section').forEach(section => {
-      section.style.display = 'none';
-    });
+    .block, .Q {
+        width: 90%;
+        margin: 10px auto;
+    }
+
+    .roadmapa {
+        grid-template-columns: 1fr;
+    }
+
+    #Q2, #Q3, #Q4, #Q1 {
+        justify-self: center;
+        margin-top: 20px;
+    }
+
+    .tokenomics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .token-box {
+        max-width: 100%;
+    }
+
+    .buy-mfrog-block {
+        width: 90%;
+    }
+
+    .social-links {
+        gap: 15px;
+    }
+
+    .footer-links {
+        gap: 10px;
+    }
+
+    /* AIRDROP MOBILE */
+    .airdrop-content-wrapper {
+        flex-direction: column;
+    }
     
-    const section = document.getElementById(sectionId);
-    if (section) {
-      section.style.display = 'block';
-      window.scrollTo(0, 0);
-      history.pushState(null, null, `#${sectionId}`);
+    .airdrop-left-column,
+    .airdrop-right-column {
+        flex: 1 1 100%;
     }
-  },
-
-  setupAirdropForm() {
-    const form = document.querySelector('.airdrop-form');
-    if (form) {
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await this.handleFormSubmit(e.target);
-      });
-    }
-  },
-
-  async handleFormSubmit(form) {
-    if (this.isProcessing) return;
     
-    const submitBtn = form.querySelector('button[type="submit"]');
-    this.isProcessing = true;
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span class="spinner"></span> Processing...';
-
-    try {
-      const formData = this.getFormData(form);
-      await this.saveToFirebase(formData);
-      this.updateUIAfterSubmission();
-      form.querySelectorAll('input').forEach(input => input.disabled = true);
-    } catch (error) {
-      this.showError(error);
-    } finally {
-      submitBtn.textContent = 'Submitted';
+    .airdrop-steps {
+        flex-direction: column;
+        gap: 20px;
     }
-  },
-
-  getFormData(form) {
-    const data = {
-      wallet: form.wallet.value.trim(),
-      xUsername: this.formatUsername(form.xUsername.value.trim()),
-      telegram: this.formatUsername(form.telegram.value.trim()),
-      tiktok: form.tiktok.value.trim() ? this.formatUsername(form.tiktok.value.trim()) : 'N/A',
-      status: 'pending',
-      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-    };
     
-    if (!data.wallet || !data.xUsername || !data.telegram) {
-      throw new Error('Please fill all required fields');
+    .step-card {
+        width: 100%;
     }
-
-    if (!this.isValidSolanaAddress(data.wallet)) {
-      throw new Error('Invalid Solana wallet address');
+    
+    .step-connector {
+        width: 2px;
+        height: 30px;
     }
+}
 
-    return data;
-  },
-
-  formatUsername(username) {
-    return username.startsWith('@') ? username : `@${username}`;
-  },
-
-  isValidSolanaAddress(address) {
-    return address.length >= 32 && address.length <= 44 && /^[A-HJ-NP-Za-km-z1-9]*$/.test(address);
-  },
-
-  async saveToFirebase(data) {
-    await Promise.all([
-      this.db.collection('airdropParticipants').doc(data.wallet).set(data),
-      this.realtimeDb.ref(`airdropSubmissions/${data.wallet.replace(/\./g, '_')}`).set(data)
-    ]);
-  },
-
-  updateUIAfterSubmission() {
-    localStorage.setItem('mfrog_registered', 'true');
-    this.updateSteps();
-    this.showAlert('✅ Registration successful!');
-  },
-
-  initializeSteps() {
-    this.updateSteps();
-  },
-
-  updateSteps() {
-    const registered = localStorage.getItem('mfrog_registered');
-    document.querySelectorAll('.step-card').forEach((step, index) => {
-      step.className = `step-card ${
-        registered ? (index === 0 ? 'completed' : index === 1 ? 'active' : 'pending') 
-                   : (index === 0 ? 'active' : 'pending')}`;
-    });
-  },
-
-  loadScript(url) {
-    return new Promise((resolve) => {
-      const script = document.createElement('script');
-      script.src = url;
-      script.onload = resolve;
-      document.head.appendChild(script);
-    });
-  },
-
-  showAlert(message, type = 'success') {
-    const alert = document.createElement('div');
-    alert.className = `alert ${type}`;
-    alert.textContent = message;
-    document.body.appendChild(alert);
-    setTimeout(() => alert.remove(), 3000);
-  },
-
-  showError(error) {
-    console.error('Error:', error);
-    this.showAlert(`❌ ${error.message}`, 'error');
-  },
-
-  showEmergencyMode() {
-    const submitBtn = document.querySelector('.airdrop-form button[type="submit"]');
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Service unavailable';
+@media screen and (max-width: 480px) {
+    .social-links {
+        flex-direction: column;
+        gap: 10px;
     }
-    this.showAlert('⚠️ System is in maintenance mode', 'error');
-  }
-};
+    
+    .social-links a {
+        padding: 8px 15px;
+    }
+    
+    .footer-links {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    footer {
+        padding: 30px 0 15px;
+    }
+}
 
-document.addEventListener('DOMContentLoaded', () => MetaFrogApp.init());
-window.addEventListener('popstate', () => {
-  MetaFrogApp.showSection(window.location.hash.substring(1) || 'home');
-});
+/* ================== */
+/* 🎨 DODATKOWE STYLE */
+/* ================== */
+
+/* Kontener główny */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+/* Spinner dla przycisku */
+.spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Alerty */
+.alert {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 25px;
+    border-radius: 8px;
+    color: white;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    animation: slideIn 0.3s forwards;
+    max-width: 300px;
+    display: flex;
+    align-items: center;
+}
+
+.alert.success {
+    background: #4CAF50;
+    border-left: 5px solid #2E7D32;
+}
+
+.alert.error {
+    background: #f44336;
+    border-left: 5px solid #c62828;
+}
+
+.alert-icon {
+    margin-right: 10px;
+    font-size: 1.2rem;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
