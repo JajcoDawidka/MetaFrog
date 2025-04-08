@@ -33,7 +33,6 @@ const MetaFrogApp = {
       this.db = app.firestore();
       this.realtimeDb = app.database();
       await this.db.enablePersistence({ synchronizeTabs: true });
-      console.log("Firebase initialized successfully!");
     } catch (error) {
       console.error("Firebase initialization error:", error);
       throw new Error("Failed to initialize Firebase services");
@@ -83,33 +82,20 @@ const MetaFrogApp = {
   },
 
   async handleFormSubmission(form) {
-    console.log("Form submitted!");
     if (this.isProcessing) return;
-
+    
     const submitBtn = form.querySelector('button[type="submit"]');
     this.toggleProcessing(true, submitBtn);
 
     try {
       const formData = this.validateFormData(form);
-      console.log("Form data validated:", formData);
       await this.saveSubmission(formData);
       this.handleSuccess(form, formData.wallet);
     } catch (error) {
-      console.error("Form submission failed:", error);
-      this.handleError(error, submitBtn); // <-- Dodajemy obsługę błędów
+      this.handleError(error, submitBtn);
     } finally {
       this.toggleProcessing(false, submitBtn);
     }
-  },
-
-  handleError(error, submitBtn) {
-    console.error("Error occurred:", error);
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = 'Submit';
-    }
-
-    this.showAlert(error.message || 'Something went wrong!', 'error');
   },
 
   validateFormData(form) {
@@ -141,10 +127,9 @@ const MetaFrogApp = {
   },
 
   async saveSubmission(data) {
-    console.log("Saving submission:", data);
     const batch = this.db.batch();
     const participantRef = this.db.collection('airdropParticipants').doc(data.wallet);
-
+    
     const doc = await participantRef.get();
     if (doc.exists) {
       throw new Error('This wallet is already registered');
@@ -159,7 +144,6 @@ const MetaFrogApp = {
     };
 
     await Promise.all([batch.commit(), rtdbRef.set(rtdbData)]);
-    console.log("Data saved successfully!");
   },
 
   handleSuccess(form, wallet) {
@@ -206,110 +190,10 @@ const MetaFrogApp = {
     }
   },
 
-  handleDexScreenerTask(e) {
-    e.preventDefault();
-    const link = e.target.href;
-    window.open(link, '_blank');
-
-    const verification = document.querySelector('.dexscreener-verification');
-    verification.textContent = '✓ Verified';
-    verification.classList.add('task-verified');
-
-    this.updateTaskCompletion('dexscreener');
-    this.showAlert('DexScreener task completed!', 'success');
-  },
-
-  async updateTaskCompletion(taskName) {
-    const wallet = localStorage.getItem('mfrog_wallet');
-    if (!wallet) return;
-
-    try {
-      await this.db.collection('airdropParticipants').doc(wallet).update({
-        [`tasks.${taskName}`]: true,
-        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-      });
-    } catch (error) {
-      console.error("Failed to update task:", error);
-    }
-  },
-
-  setupTaskVerification() {
-    if (!this.isRegistered()) return;
-
-    const wallet = localStorage.getItem('mfrog_wallet');
-    this.db.collection('airdropParticipants').doc(wallet).onSnapshot(doc => {
-      if (doc.exists) {
-        const data = doc.data();
-
-        if (data.tasks?.twitter) {
-          document.querySelector('[twitter-task] .verification-status').classList.add('task-verified');
-        }
-        if (data.tasks?.telegram) {
-          document.querySelector('[telegram-task] .verification-status').classList.add('task-verified');
-        }
-        if (data.tasks?.tiktok) {
-          document.querySelector('[tiktok-task] .verification-status').classList.add('task-verified');
-        }
-      }
-    });
-  },
-
-  checkPreviousSubmission() {
-    if (this.isRegistered()) {
-      this.updateProgressSteps();
-      const form = document.querySelector('.airdrop-form');
-      if (form) {
-        form.querySelectorAll('input').forEach(input => input.disabled = true);
-        form.querySelector('button[type="submit"]').textContent = 'Already Registered';
-      }
-    } else {
-      this.updateProgressSteps();
-    }
-  },
-
-  checkReferral() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const ref = urlParams.get('ref');
-
-    if (ref && this.isValidSolanaAddress(ref)) {
-      localStorage.setItem('mfrog_referrer', ref);
-
-      if (!this.isRegistered()) {
-        this.db.collection('referrals').doc(ref).update({
-          clicks: firebase.firestore.FieldValue.increment(1),
-          lastClick: firebase.firestore.FieldValue.serverTimestamp()
-        }).catch(() => {
-          this.db.collection('referrals').doc(ref).set({
-            clicks: 1,
-            wallet: ref,
-            lastClick: firebase.firestore.FieldValue.serverTimestamp()
-          });
-        });
-      }
-    }
-  },
-
-  getReferralSource() {
-    return localStorage.getItem('mfrog_referrer') || document.referrer || 'direct';
-  },
-
-  showSection(sectionId) {
-    document.querySelectorAll('.section').forEach(section => {
-      section.classList.remove('active');
-    });
-
-    const section = document.getElementById(sectionId);
-    if (section) {
-      section.classList.add('active');
-      window.scrollTo(0, 0);
-      history.replaceState(null, null, `#${sectionId}`);
-    }
-  },
-
   showAlert(message, type = 'info') {
     const alert = document.createElement('div');
     alert.className = `alert alert-${type}`;
-    alert.innerHTML = `   
+    alert.innerHTML = `
       <span class="alert-icon">${
         type === 'success' ? '✓' :
         type === 'error' ? '✕' :
