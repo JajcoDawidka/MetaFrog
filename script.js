@@ -1,5 +1,3 @@
-// script.js
-
 const firebaseConfig = {
   apiKey: "AIzaSyAR6Ha8baMX5EPsPVayTno0e0QBRqZrmco",
   authDomain: "metafrog-airdrop.firebaseapp.com",
@@ -295,7 +293,7 @@ const MetaFrogApp = {
   showAlert(message, type = 'info') {
     const alert = document.createElement('div');
     alert.className = `alert alert-${type}`;
-    alert.innerHTML = `
+    alert.innerHTML = `    
       <span class="alert-icon">${
         type === 'success' ? '✓' :
         type === 'error' ? '✕' :
