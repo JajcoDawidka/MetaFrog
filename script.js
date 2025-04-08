@@ -1,5 +1,3 @@
-// script.js
-
 const firebaseConfig = {
   apiKey: "AIzaSyAR6Ha8baMX5EPsPVayTno0e0QBRqZrmco",
   authDomain: "metafrog-airdrop.firebaseapp.com",
@@ -295,7 +293,7 @@ const MetaFrogApp = {
   showAlert(message, type = 'info') {
     const alert = document.createElement('div');
     alert.className = `alert alert-${type}`;
-    alert.innerHTML = `
+    alert.innerHTML = `   
       <span class="alert-icon">${
         type === 'success' ? '✓' :
         type === 'error' ? '✕' :
@@ -336,8 +334,8 @@ const MetaFrogApp = {
     this.isProcessing = processing;
     if (button) {
       button.disabled = processing;
-      button.innerHTML = processing
-        ? '<span class="spinner"></span> Processing...'
+      button.innerHTML = processing 
+        ? '<span class="spinner"></span> Processing...' 
         : 'Submit';
     }
   }
@@ -345,3 +343,21 @@ const MetaFrogApp = {
 
 // Init
 document.addEventListener('DOMContentLoaded', () => MetaFrogApp.init());
+window.addEventListener('popstate', () => {
+  const section = window.location.hash.substring(1) || 'home';
+  MetaFrogApp.showSection(section);
+});
+
+window.copyReferralLink = function() {
+  if (!localStorage.getItem('mfrog_registered')) {
+    MetaFrogApp.showAlert('Please complete registration first', 'warning');
+    return;
+  }
+
+  const wallet = localStorage.getItem('mfrog_wallet');
+  const referralLink = `${window.location.origin}${window.location.pathname}?ref=${wallet}`;
+
+  navigator.clipboard.writeText(referralLink)
+    .then(() => MetaFrogApp.showAlert('Referral link copied!', 'success'))
+    .catch(() => MetaFrogApp.showAlert('Failed to copy link', 'error'));
+};
