@@ -56,6 +56,29 @@ const MetaFrogApp = {
       });
     }
 
+    document.querySelectorAll('.task-link').forEach(link => {
+      if (!link.classList.contains('dexscreener-link')) {
+        link.addEventListener('click', (e) => {
+          if (!this.isRegistered()) {
+            e.preventDefault();
+            this.showAlert('Please complete registration first', 'warning');
+          }
+        });
+      }
+    });
+
+    const dexscreenerLink = document.querySelector('.dexscreener-link');
+    if (dexscreenerLink) {
+      dexscreenerLink.addEventListener('click', (e) => {
+        if (!this.isRegistered()) {
+          e.preventDefault();
+          this.showAlert('Please complete registration first', 'warning');
+          return;
+        }
+        this.handleDexScreenerTask(e);
+      });
+    }
+
     this.checkReferral();
   },
 
@@ -109,7 +132,6 @@ const MetaFrogApp = {
 
   async saveSubmission(data) {
     console.log("Saving submission:", data);
-
     const batch = this.db.batch();
     const participantRef = this.db.collection('airdropParticipants').doc(data.wallet);
 
@@ -119,7 +141,7 @@ const MetaFrogApp = {
     }
 
     batch.set(participantRef, data);
-
+    
     const rtdbRef = this.realtimeDb.ref(`airdropSubmissions/${data.wallet.replace(/\./g, '_')}`);
     const rtdbData = {
       ...data,
@@ -172,6 +194,54 @@ const MetaFrogApp = {
         }
       });
     }
+  },
+
+  handleDexScreenerTask(e) {
+    e.preventDefault();
+    const link = e.target.href;
+    window.open(link, '_blank');
+
+    const verification = document.querySelector('.dexscreener-verification');
+    verification.textContent = '✓ Verified';
+    verification.classList.add('task-verified');
+
+    this.updateTaskCompletion('dexscreener');
+    this.showAlert('DexScreener task completed!', 'success');
+  },
+
+  async updateTaskCompletion(taskName) {
+    const wallet = localStorage.getItem('mfrog_wallet');
+    if (!wallet) return;
+
+    try {
+      await this.db.collection('airdropParticipants').doc(wallet).update({
+        [`tasks.${taskName}`]: true,
+        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } catch (error) {
+      console.error("Failed to update task:", error);
+    }
+  },
+
+  setupTaskVerification() {
+    if (!this.isRegistered()) return;
+
+    const wallet = localStorage.getItem('mfrog_wallet');
+    this.db.collection('airdropParticipants').doc(wallet).onSnapshot(doc => {
+      if (doc.exists) {
+        const data = doc.data();
+
+        if (data.tasks?.twitter) {
+          document.querySelector('[twitter-task] .verification-status').classList.add('task-verified');
+        }
+        if (data.tasks?.telegram) {
+          document.querySelector('[telegram-task] .verification-status').classList.add('task-verified');
+        }
+        if (data.tasks?.tiktok) {
+          document.querySelector('[tiktok-task] .verification-status').classList.add('task-verified');
+        }
+      }
+    });
   },
 
   checkPreviousSubmission() {
@@ -295,5 +365,5 @@ window.copyReferralLink = function() {
 
   navigator.clipboard.writeText(referralLink)
     .then(() => MetaFrogApp.showAlert('Referral link copied!', 'success'))
-    .catch(() => MetaFrogApp.showAlert('Failed to copy link', 'error'));
+    .catch(() => MetaFrogApp.showAlert('Failed to copy referral link', 'error'));
 };
