@@ -33,6 +33,7 @@ const MetaFrogApp = {
       this.db = app.firestore();
       this.realtimeDb = app.database();
       await this.db.enablePersistence({ synchronizeTabs: true });
+      console.log("Firebase initialized successfully!");
     } catch (error) {
       console.error("Firebase initialization error:", error);
       throw new Error("Failed to initialize Firebase services");
@@ -55,43 +56,23 @@ const MetaFrogApp = {
       });
     }
 
-    document.querySelectorAll('.task-link').forEach(link => {
-      if (!link.classList.contains('dexscreener-link')) {
-        link.addEventListener('click', (e) => {
-          if (!this.isRegistered()) {
-            e.preventDefault();
-            this.showAlert('Please complete registration first', 'warning');
-          }
-        });
-      }
-    });
-
-    const dexscreenerLink = document.querySelector('.dexscreener-link');
-    if (dexscreenerLink) {
-      dexscreenerLink.addEventListener('click', (e) => {
-        if (!this.isRegistered()) {
-          e.preventDefault();
-          this.showAlert('Please complete registration first', 'warning');
-          return;
-        }
-        this.handleDexScreenerTask(e);
-      });
-    }
-
     this.checkReferral();
   },
 
   async handleFormSubmission(form) {
+    console.log("Form submitted!");
     if (this.isProcessing) return;
-    
+
     const submitBtn = form.querySelector('button[type="submit"]');
     this.toggleProcessing(true, submitBtn);
 
     try {
       const formData = this.validateFormData(form);
+      console.log("Form data validated:", formData);
       await this.saveSubmission(formData);
       this.handleSuccess(form, formData.wallet);
     } catch (error) {
+      console.error("Form submission failed:", error);
       this.handleError(error, submitBtn);
     } finally {
       this.toggleProcessing(false, submitBtn);
@@ -127,16 +108,18 @@ const MetaFrogApp = {
   },
 
   async saveSubmission(data) {
+    console.log("Saving submission:", data);
+
     const batch = this.db.batch();
     const participantRef = this.db.collection('airdropParticipants').doc(data.wallet);
-    
+
     const doc = await participantRef.get();
     if (doc.exists) {
       throw new Error('This wallet is already registered');
     }
 
     batch.set(participantRef, data);
-    
+
     const rtdbRef = this.realtimeDb.ref(`airdropSubmissions/${data.wallet.replace(/\./g, '_')}`);
     const rtdbData = {
       ...data,
@@ -144,6 +127,7 @@ const MetaFrogApp = {
     };
 
     await Promise.all([batch.commit(), rtdbRef.set(rtdbData)]);
+    console.log("Data saved successfully!");
   },
 
   handleSuccess(form, wallet) {
@@ -190,10 +174,62 @@ const MetaFrogApp = {
     }
   },
 
+  checkPreviousSubmission() {
+    if (this.isRegistered()) {
+      this.updateProgressSteps();
+      const form = document.querySelector('.airdrop-form');
+      if (form) {
+        form.querySelectorAll('input').forEach(input => input.disabled = true);
+        form.querySelector('button[type="submit"]').textContent = 'Already Registered';
+      }
+    } else {
+      this.updateProgressSteps();
+    }
+  },
+
+  checkReferral() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const ref = urlParams.get('ref');
+
+    if (ref && this.isValidSolanaAddress(ref)) {
+      localStorage.setItem('mfrog_referrer', ref);
+
+      if (!this.isRegistered()) {
+        this.db.collection('referrals').doc(ref).update({
+          clicks: firebase.firestore.FieldValue.increment(1),
+          lastClick: firebase.firestore.FieldValue.serverTimestamp()
+        }).catch(() => {
+          this.db.collection('referrals').doc(ref).set({
+            clicks: 1,
+            wallet: ref,
+            lastClick: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        });
+      }
+    }
+  },
+
+  getReferralSource() {
+    return localStorage.getItem('mfrog_referrer') || document.referrer || 'direct';
+  },
+
+  showSection(sectionId) {
+    document.querySelectorAll('.section').forEach(section => {
+      section.classList.remove('active');
+    });
+
+    const section = document.getElementById(sectionId);
+    if (section) {
+      section.classList.add('active');
+      window.scrollTo(0, 0);
+      history.replaceState(null, null, `#${sectionId}`);
+    }
+  },
+
   showAlert(message, type = 'info') {
     const alert = document.createElement('div');
     alert.className = `alert alert-${type}`;
-    alert.innerHTML = `
+    alert.innerHTML = `   
       <span class="alert-icon">${
         type === 'success' ? '✓' :
         type === 'error' ? '✕' :
