@@ -130,7 +130,6 @@ const MetaFrogApp = {
     };
   },
 
-  // Zaktualizowana funkcja saveSubmission
   async saveSubmission(data) {
     console.log("Saving submission:", data); // Logowanie danych przed próbą zapisu
     const batch = this.db.batch();
@@ -146,13 +145,13 @@ const MetaFrogApp = {
         
         const rtdbRef = this.realtimeDb.ref(`airdropSubmissions/${data.wallet.replace(/\./g, '_')}`);
         const rtdbData = {
-          ...data,
-          timestamp: firebase.database.ServerValue.TIMESTAMP
+            ...data,
+            timestamp: firebase.database.ServerValue.TIMESTAMP
         };
 
         // Logowanie przed wysłaniem zapisu
         console.log("Writing to Firestore and Realtime Database...");
-
+        
         await Promise.all([batch.commit(), rtdbRef.set(rtdbData)]);
         console.log("Data saved successfully!");
 
