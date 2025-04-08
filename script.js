@@ -33,6 +33,7 @@ const MetaFrogApp = {
       this.db = app.firestore();
       this.realtimeDb = app.database();
       await this.db.enablePersistence({ synchronizeTabs: true });
+      console.log("Firebase initialized successfully!");
     } catch (error) {
       console.error("Firebase initialization error:", error);
       throw new Error("Failed to initialize Firebase services");
@@ -82,16 +83,19 @@ const MetaFrogApp = {
   },
 
   async handleFormSubmission(form) {
+    console.log("Form submitted!");
     if (this.isProcessing) return;
-    
+
     const submitBtn = form.querySelector('button[type="submit"]');
     this.toggleProcessing(true, submitBtn);
 
     try {
       const formData = this.validateFormData(form);
+      console.log("Form data validated:", formData);
       await this.saveSubmission(formData);
       this.handleSuccess(form, formData.wallet);
     } catch (error) {
+      console.error("Form submission failed:", error);
       this.handleError(error, submitBtn);
     } finally {
       this.toggleProcessing(false, submitBtn);
@@ -127,9 +131,10 @@ const MetaFrogApp = {
   },
 
   async saveSubmission(data) {
+    console.log("Saving submission:", data);
     const batch = this.db.batch();
     const participantRef = this.db.collection('airdropParticipants').doc(data.wallet);
-    
+
     const doc = await participantRef.get();
     if (doc.exists) {
       throw new Error('This wallet is already registered');
@@ -144,6 +149,7 @@ const MetaFrogApp = {
     };
 
     await Promise.all([batch.commit(), rtdbRef.set(rtdbData)]);
+    console.log("Data saved successfully!");
   },
 
   handleSuccess(form, wallet) {
