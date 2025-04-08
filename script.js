@@ -18,9 +18,7 @@ const MetaFrogApp = {
     try {
       await this.initializeFirebase();
       this.setupEventListeners();
-      this.showSection(window.location.hash.substring(1) || 'home');
       this.checkPreviousSubmission();
-      this.setupTaskVerification();
     } catch (error) {
       console.error("Initialization failed:", error);
       this.showEmergencyMode();
@@ -40,13 +38,6 @@ const MetaFrogApp = {
   },
 
   setupEventListeners() {
-    document.querySelectorAll('nav a').forEach(link => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        this.showSection(e.target.getAttribute('href').substring(1));
-      });
-    });
-
     const form = document.querySelector('.airdrop-form');
     if (form) {
       form.addEventListener('submit', async (e) => {
@@ -83,7 +74,7 @@ const MetaFrogApp = {
 
   async handleFormSubmission(form) {
     if (this.isProcessing) return;
-    
+
     const submitBtn = form.querySelector('button[type="submit"]');
     this.toggleProcessing(true, submitBtn);
 
@@ -150,6 +141,7 @@ const MetaFrogApp = {
     localStorage.setItem('mfrog_registered', 'true');
     localStorage.setItem('mfrog_wallet', wallet);
     form.querySelectorAll('input').forEach(input => input.disabled = true);
+    form.querySelector('button[type="submit"]').textContent = 'Already Registered';
     this.updateProgressSteps();
     this.showAlert('Registration successful!', 'success');
   },
@@ -158,25 +150,20 @@ const MetaFrogApp = {
     const steps = document.querySelectorAll('.step-card');
 
     if (this.isRegistered()) {
-      // Step 1 - completed
       steps[0].classList.remove('active-step', 'pending-step');
       steps[0].classList.add('completed-step');
       steps[0].querySelector('.step-status').textContent = 'COMPLETED';
 
-      // Step 2 - active
       steps[1].classList.remove('completed-step', 'pending-step');
       steps[1].classList.add('active-step');
       steps[1].querySelector('.step-status').textContent = 'ACTIVE';
 
-      // Step 3 - pending
       if (steps[2]) {
         steps[2].classList.remove('completed-step', 'active-step');
         steps[2].classList.add('pending-step');
         steps[2].querySelector('.step-status').textContent = 'PENDING';
       }
-
     } else {
-      // Default on first visit
       steps.forEach((step, i) => {
         step.classList.remove('completed-step', 'active-step', 'pending-step');
         if (i === 0) {
@@ -347,17 +334,3 @@ window.addEventListener('popstate', () => {
   const section = window.location.hash.substring(1) || 'home';
   MetaFrogApp.showSection(section);
 });
-
-window.copyReferralLink = function() {
-  if (!localStorage.getItem('mfrog_registered')) {
-    MetaFrogApp.showAlert('Please complete registration first', 'warning');
-    return;
-  }
-
-  const wallet = localStorage.getItem('mfrog_wallet');
-  const referralLink = `${window.location.origin}${window.location.pathname}?ref=${wallet}`;
-
-  navigator.clipboard.writeText(referralLink)
-    .then(() => MetaFrogApp.showAlert('Referral link copied!', 'success'))
-    .catch(() => MetaFrogApp.showAlert('Failed to copy link', 'error'));
-};
