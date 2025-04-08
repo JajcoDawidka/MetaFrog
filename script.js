@@ -73,6 +73,10 @@ const MetaFrogApp = {
     } catch (error) {
       console.error("Form submission failed:", error);
       this.handleError(error, submitBtn);
+      
+      if (error.message.includes('permission') || error.code === 'permission-denied') {
+        this.showEmergencyMode();
+      }
     } finally {
       this.toggleProcessing(false, submitBtn);
     }
@@ -103,31 +107,37 @@ const MetaFrogApp = {
       userAgent: navigator.userAgent,
       referrer: this.getReferralSource(),
       points: 0,
-      step1_completed: true, // Mark step 1 as completed
-      step2_active: true     // Mark step 2 as active
+      step1_completed: true,
+      step2_active: true
     };
   },
 
   async saveSubmission(data) {
     console.log("Saving submission:", data);
-    const batch = this.db.batch();
-    const participantRef = this.db.collection('airdropParticipants').doc(data.wallet);
+    try {
+      const participantRef = this.db.collection('airdropParticipants').doc(data.wallet);
 
-    const doc = await participantRef.get();
-    if (doc.exists) {
-      throw new Error('This wallet is already registered');
+      const doc = await participantRef.get();
+      if (doc.exists) {
+        throw new Error('This wallet is already registered');
+      }
+
+      await participantRef.set(data);
+      
+      const rtdbRef = this.realtimeDb.ref(`airdropSubmissions/${data.wallet.replace(/\./g, '_')}`);
+      await rtdbRef.set({
+        ...data,
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+      });
+
+      console.log("Data saved successfully!");
+    } catch (error) {
+      console.error("Error saving submission:", error);
+      if (error.code === 'permission-denied') {
+        throw new Error('Registration is currently closed. Please try again later.');
+      }
+      throw error;
     }
-
-    batch.set(participantRef, data);
-    
-    const rtdbRef = this.realtimeDb.ref(`airdropSubmissions/${data.wallet.replace(/\./g, '_')}`);
-    const rtdbData = {
-      ...data,
-      timestamp: firebase.database.ServerValue.TIMESTAMP
-    };
-
-    await Promise.all([batch.commit(), rtdbRef.set(rtdbData)]);
-    console.log("Data saved successfully!");
   },
 
   handleSuccess(form, wallet) {
@@ -154,14 +164,14 @@ const MetaFrogApp = {
       steps[1].classList.add('active-step');
       steps[1].querySelector('.step-status').textContent = 'ACTIVE';
 
-      // If there's a step 3, keep it pending
+      // Step 3 - pending (if exists)
       if (steps[2]) {
         steps[2].classList.remove('completed-step', 'active-step');
         steps[2].classList.add('pending-step');
         steps[2].querySelector('.step-status').textContent = 'PENDING';
       }
     } else {
-      // Default state for new visitors
+      // Default state
       steps[0].classList.remove('completed-step', 'pending-step');
       steps[0].classList.add('active-step');
       steps[0].querySelector('.step-status').textContent = 'ACTIVE';
@@ -253,9 +263,14 @@ const MetaFrogApp = {
     const submitBtn = document.querySelector('.airdrop-form button[type="submit"]');
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Service Unavailable';
+      submitBtn.textContent = 'Registration Closed';
     }
-    this.showAlert('System maintenance in progress. Please check back later.', 'error');
+    this.showAlert('We are currently not accepting new registrations. Please check back later.', 'error');
+    
+    const form = document.querySelector('.airdrop-form');
+    if (form) {
+      form.querySelectorAll('input').forEach(input => input.disabled = true);
+    }
   },
 
   handleError(error, submitBtn) {
@@ -290,13 +305,14 @@ const MetaFrogApp = {
   }
 };
 
-// Init
+// Initialize the app
 document.addEventListener('DOMContentLoaded', () => MetaFrogApp.init());
 window.addEventListener('popstate', () => {
   const section = window.location.hash.substring(1) || 'home';
   MetaFrogApp.showSection(section);
 });
 
+// Referral link copy function
 window.copyReferralLink = function() {
   if (!localStorage.getItem('mfrog_registered')) {
     MetaFrogApp.showAlert('Please complete registration first', 'warning');
