@@ -96,10 +96,20 @@ const MetaFrogApp = {
       this.handleSuccess(form, formData.wallet);
     } catch (error) {
       console.error("Form submission failed:", error);
-      this.handleError(error, submitBtn);
+      this.handleError(error, submitBtn); // <-- Dodajemy obsługę błędów
     } finally {
       this.toggleProcessing(false, submitBtn);
     }
+  },
+
+  handleError(error, submitBtn) {
+    console.error("Error occurred:", error);
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Submit';
+    }
+
+    this.showAlert(error.message || 'Something went wrong!', 'error');
   },
 
   validateFormData(form) {
