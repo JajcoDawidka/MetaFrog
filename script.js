@@ -11,274 +11,148 @@ const firebaseConfig = {
 
 const MetaFrogApp = {
   isProcessing: false,
-  db: null,
-  realtimeDb: null,
 
   async init() {
     try {
-      await this.initializeFirebase();
+      // Inicjalizacja Firebase
+      firebase.initializeApp(firebaseConfig);
+      this.db = firebase.firestore();
+      this.realtimeDb = firebase.database();
+
+      // Sprawdź poprzednią rejestrację
+      if (this.isRegistered()) {
+        this.markFormAsCompleted();
+        this.updateStepsUI();
+      }
+
       this.setupEventListeners();
       this.showSection(window.location.hash.substring(1) || 'home');
-      this.checkPreviousSubmission();
-      this.setupTaskVerification();
     } catch (error) {
-      console.error("Initialization failed:", error);
+      console.error("Init error:", error);
       this.showEmergencyMode();
     }
   },
 
-  async initializeFirebase() {
-    try {
-      const app = firebase.initializeApp(firebaseConfig);
-      this.db = app.firestore();
-      this.realtimeDb = app.database();
-      await this.db.enablePersistence({ synchronizeTabs: true });
-      console.log("Firebase initialized successfully!");
-    } catch (error) {
-      console.error("Firebase initialization error:", error);
-      throw new Error("Failed to initialize Firebase services");
-    }
-  },
-
   setupEventListeners() {
+    // Obsługa formularza
+    const form = document.querySelector('.airdrop-form');
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await this.processForm(form);
+      });
+    }
+
+    // Nawigacja
     document.querySelectorAll('nav a').forEach(link => {
       link.addEventListener('click', (e) => {
         e.preventDefault();
         this.showSection(e.target.getAttribute('href').substring(1));
       });
     });
-
-    const form = document.querySelector('.airdrop-form');
-    if (form) {
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await this.handleFormSubmission(e.target);
-      });
-    }
-
-    document.querySelectorAll('.task-link').forEach(link => {
-      if (!link.classList.contains('dexscreener-link')) {
-        link.addEventListener('click', (e) => {
-          if (!this.isRegistered()) {
-            e.preventDefault();
-            this.showAlert('Please complete registration first', 'warning');
-          }
-        });
-      }
-    });
-
-    const dexscreenerLink = document.querySelector('.dexscreener-link');
-    if (dexscreenerLink) {
-      dexscreenerLink.addEventListener('click', (e) => {
-        if (!this.isRegistered()) {
-          e.preventDefault();
-          this.showAlert('Please complete registration first', 'warning');
-          return;
-        }
-        this.handleDexScreenerTask(e);
-      });
-    }
-
-    this.checkReferral();
   },
 
-  async handleFormSubmission(form) {
+  async processForm(form) {
     if (this.isProcessing) return;
     this.isProcessing = true;
 
     const submitBtn = form.querySelector('button[type="submit"]');
-    const originalBtnText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<span class="spinner"></span> Processing...';
-    submitBtn.disabled = true;
+    const originalText = submitBtn.innerHTML;
 
     try {
-      const formData = this.validateFormData(form);
-      await this.saveSubmission(formData);
+      // 1. Przygotuj dane
+      const formData = {
+        wallet: form.wallet.value.trim(),
+        xUsername: this.normalizeUsername(form.xUsername.value.trim()),
+        telegram: this.normalizeUsername(form.telegram.value.trim()),
+        tiktok: form.tiktok.value.trim() ? this.normalizeUsername(form.tiktok.value.trim()) : 'N/A',
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        status: 'registered'
+      };
+
+      // 2. Walidacja
+      if (!formData.wallet || !formData.xUsername || !formData.telegram) {
+        throw new Error('Wypełnij wszystkie wymagane pola');
+      }
+
+      if (!this.isValidSolanaAddress(formData.wallet)) {
+        throw new Error('Nieprawidłowy adres portfela Solana');
+      }
+
+      // 3. Zapisz do Firebase
+      await this.db.collection('airdropParticipants').doc(formData.wallet).set(formData);
       
-      submitBtn.textContent = 'Registered!';
+      // 4. Aktualizuj UI
+      submitBtn.textContent = '✓ Zarejestrowano';
+      submitBtn.style.backgroundColor = '#4CAF50';
+      submitBtn.disabled = true;
       form.querySelectorAll('input').forEach(input => input.disabled = true);
-      
+
+      // 5. Zapisz w localStorage
       localStorage.setItem('mfrog_registered', 'true');
       localStorage.setItem('mfrog_wallet', formData.wallet);
-      
-      this.updateProgressSteps();
-      this.showAlert('Registration successful!', 'success');
 
-      setTimeout(() => this.updateProgressSteps(), 1000);
+      // 6. Aktualizuj kroki
+      this.updateStepsUI();
+      this.showAlert('Rejestracja udana!', 'success');
 
     } catch (error) {
-      console.error("Error:", error);
-      submitBtn.innerHTML = originalBtnText;
-      submitBtn.disabled = false;
-      this.showAlert(error.message || 'An error occurred', 'error');
+      console.error("Błąd rejestracji:", error);
+      submitBtn.innerHTML = originalText;
+      this.showAlert(error.message, 'error');
     } finally {
       this.isProcessing = false;
     }
   },
 
-  validateFormData(form) {
-    const wallet = form.wallet.value.trim();
-    const xUsername = form.xUsername.value.trim();
-    const telegram = form.telegram.value.trim();
-    const tiktok = form.tiktok.value.trim();
-
-    if (!wallet || !xUsername || !telegram) {
-      throw new Error('All required fields must be filled');
-    }
-
-    if (!this.isValidSolanaAddress(wallet)) {
-      throw new Error('Invalid Solana wallet address format');
-    }
-
-    return {
-      wallet: wallet,
-      xUsername: this.normalizeUsername(xUsername),
-      telegram: this.normalizeUsername(telegram),
-      tiktok: tiktok ? this.normalizeUsername(tiktok) : 'N/A',
-      status: 'pending',
-      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-      ip: '',
-      userAgent: navigator.userAgent,
-      referrer: this.getReferralSource(),
-      points: 0,
-      step1_completed: true,
-      step2_active: true
-    };
-  },
-
-  async saveSubmission(data) {
-    const participantRef = this.db.collection('airdropParticipants').doc(data.wallet);
-    const doc = await participantRef.get();
-    if (doc.exists) {
-      throw new Error('This wallet is already registered');
-    }
-
-    await participantRef.set(data);
-    
-    const rtdbRef = this.realtimeDb.ref(`airdropSubmissions/${data.wallet.replace(/\./g, '_')}`);
-    await rtdbRef.set({
-      ...data,
-      timestamp: firebase.database.ServerValue.TIMESTAMP
-    });
-  },
-
-  updateProgressSteps() {
+  updateStepsUI() {
     const steps = document.querySelectorAll('.step-card');
-    if (!steps || steps.length === 0) return;
+    if (!steps) return;
 
     const isRegistered = this.isRegistered();
 
     steps.forEach((step, index) => {
+      // Resetuj klasy
       step.classList.remove('active-step', 'completed-step', 'pending-step');
-      const statusElement = step.querySelector('.step-status');
+      
+      // Znajdź element statusu
+      const statusEl = step.querySelector('.step-status');
+      if (!statusEl) return;
 
       if (isRegistered) {
         if (index === 0) {
           step.classList.add('completed-step');
-          statusElement.textContent = 'COMPLETED';
+          statusEl.textContent = 'ZAKOŃCZONY';
         } else if (index === 1) {
           step.classList.add('active-step');
-          statusElement.textContent = 'ACTIVE';
+          statusEl.textContent = 'AKTYWNY';
         } else {
           step.classList.add('pending-step');
-          statusElement.textContent = 'PENDING';
+          statusEl.textContent = 'OCZEKUJĄCY';
         }
       } else {
         if (index === 0) {
           step.classList.add('active-step');
-          statusElement.textContent = 'ACTIVE';
+          statusEl.textContent = 'AKTYWNY';
         } else {
           step.classList.add('pending-step');
-          statusElement.textContent = 'PENDING';
+          statusEl.textContent = 'OCZEKUJĄCY';
         }
       }
     });
   },
 
-  handleDexScreenerTask(e) {
-    e.preventDefault();
-    window.open(e.target.href, '_blank');
-    const verification = document.querySelector('.dexscreener-verification');
-    verification.textContent = '✓ Verified';
-    verification.classList.add('task-verified');
-    this.updateTaskCompletion('dexscreener');
-    this.showAlert('DexScreener task completed!', 'success');
-  },
+  markFormAsCompleted() {
+    const form = document.querySelector('.airdrop-form');
+    if (!form) return;
 
-  async updateTaskCompletion(taskName) {
-    const wallet = localStorage.getItem('mfrog_wallet');
-    if (!wallet) return;
-
-    try {
-      await this.db.collection('airdropParticipants').doc(wallet).update({
-        [`tasks.${taskName}`]: true,
-        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-      });
-    } catch (error) {
-      console.error("Failed to update task:", error);
+    form.querySelectorAll('input').forEach(input => input.disabled = true);
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.textContent = '✓ Już zarejestrowano';
+      submitBtn.disabled = true;
+      submitBtn.style.backgroundColor = '#4CAF50';
     }
-  },
-
-  setupTaskVerification() {
-    if (!this.isRegistered()) return;
-
-    const wallet = localStorage.getItem('mfrog_wallet');
-    this.db.collection('airdropParticipants').doc(wallet).onSnapshot(doc => {
-      if (doc.exists) {
-        const data = doc.data();
-
-        if (data.tasks?.twitter) {
-          document.querySelector('[twitter-task] .verification-status').classList.add('task-verified');
-        }
-        if (data.tasks?.telegram) {
-          document.querySelector('[telegram-task] .verification-status').classList.add('task-verified');
-        }
-        if (data.tasks?.tiktok) {
-          document.querySelector('[tiktok-task] .verification-status').classList.add('task-verified');
-        }
-      }
-    });
-  },
-
-  checkPreviousSubmission() {
-    if (this.isRegistered()) {
-      this.updateProgressSteps();
-      const form = document.querySelector('.airdrop-form');
-      if (form) {
-        form.querySelectorAll('input').forEach(input => input.disabled = true);
-        const submitBtn = form.querySelector('button[type="submit"]');
-        submitBtn.textContent = 'Already Registered';
-        submitBtn.disabled = true;
-      }
-    } else {
-      this.updateProgressSteps();
-    }
-  },
-
-  checkReferral() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const ref = urlParams.get('ref');
-
-    if (ref && this.isValidSolanaAddress(ref)) {
-      localStorage.setItem('mfrog_referrer', ref);
-
-      if (!this.isRegistered()) {
-        this.db.collection('referrals').doc(ref).update({
-          clicks: firebase.firestore.FieldValue.increment(1),
-          lastClick: firebase.firestore.FieldValue.serverTimestamp()
-        }).catch(() => {
-          this.db.collection('referrals').doc(ref).set({
-            clicks: 1,
-            wallet: ref,
-            lastClick: firebase.firestore.FieldValue.serverTimestamp()
-          });
-        });
-      }
-    }
-  },
-
-  getReferralSource() {
-    return localStorage.getItem('mfrog_referrer') || document.referrer || 'direct';
   },
 
   showSection(sectionId) {
@@ -297,7 +171,7 @@ const MetaFrogApp = {
   showAlert(message, type = 'info') {
     const alert = document.createElement('div');
     alert.className = `alert alert-${type}`;
-    alert.innerHTML = `   
+    alert.innerHTML = `
       <span class="alert-icon">${
         type === 'success' ? '✓' :
         type === 'error' ? '✕' :
@@ -317,9 +191,9 @@ const MetaFrogApp = {
     const submitBtn = document.querySelector('.airdrop-form button[type="submit"]');
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Service Unavailable';
+      submitBtn.textContent = 'Serwis niedostępny';
     }
-    this.showAlert('System maintenance in progress. Please check back later.', 'error');
+    this.showAlert('Trwają prace techniczne. Spróbuj ponownie później.', 'error');
   },
 
   normalizeUsername(username) {
@@ -335,11 +209,15 @@ const MetaFrogApp = {
   }
 };
 
-document.addEventListener('DOMContentLoaded', () => MetaFrogApp.init());
+// Inicjalizacja aplikacji
+document.addEventListener('DOMContentLoaded', () => {
+  MetaFrogApp.init();
+});
 
+// Funkcja kopiowania linku referalnego
 window.copyReferralLink = function() {
   if (!localStorage.getItem('mfrog_registered')) {
-    MetaFrogApp.showAlert('Please complete registration first', 'warning');
+    MetaFrogApp.showAlert('Najpierw zakończ rejestrację', 'warning');
     return;
   }
 
@@ -347,6 +225,6 @@ window.copyReferralLink = function() {
   const referralLink = `${window.location.origin}${window.location.pathname}?ref=${wallet}`;
 
   navigator.clipboard.writeText(referralLink)
-    .then(() => MetaFrogApp.showAlert('Referral link copied!', 'success'))
-    .catch(() => MetaFrogApp.showAlert('Failed to copy link', 'error'));
+    .then(() => MetaFrogApp.showAlert('Skopiowano link referencyjny!', 'success'))
+    .catch(() => MetaFrogApp.showAlert('Błąd kopiowania', 'error'));
 };
