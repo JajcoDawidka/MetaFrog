@@ -130,26 +130,36 @@ const MetaFrogApp = {
     };
   },
 
+  // Zaktualizowana funkcja saveSubmission
   async saveSubmission(data) {
-    console.log("Saving submission:", data);
+    console.log("Saving submission:", data); // Logowanie danych przed próbą zapisu
     const batch = this.db.batch();
     const participantRef = this.db.collection('airdropParticipants').doc(data.wallet);
 
-    const doc = await participantRef.get();
-    if (doc.exists) {
-      throw new Error('This wallet is already registered');
+    try {
+        const doc = await participantRef.get();
+        if (doc.exists) {
+            throw new Error('This wallet is already registered');
+        }
+
+        batch.set(participantRef, data);
+        
+        const rtdbRef = this.realtimeDb.ref(`airdropSubmissions/${data.wallet.replace(/\./g, '_')}`);
+        const rtdbData = {
+          ...data,
+          timestamp: firebase.database.ServerValue.TIMESTAMP
+        };
+
+        // Logowanie przed wysłaniem zapisu
+        console.log("Writing to Firestore and Realtime Database...");
+
+        await Promise.all([batch.commit(), rtdbRef.set(rtdbData)]);
+        console.log("Data saved successfully!");
+
+    } catch (error) {
+        console.error("Error during submission:", error); // Logowanie błędów
+        throw new Error('Error during submission: ' + error.message);
     }
-
-    batch.set(participantRef, data);
-    
-    const rtdbRef = this.realtimeDb.ref(`airdropSubmissions/${data.wallet.replace(/\./g, '_')}`);
-    const rtdbData = {
-      ...data,
-      timestamp: firebase.database.ServerValue.TIMESTAMP
-    };
-
-    await Promise.all([batch.commit(), rtdbRef.set(rtdbData)]);
-    console.log("Data saved successfully!");
   },
 
   handleSuccess(form, wallet) {
